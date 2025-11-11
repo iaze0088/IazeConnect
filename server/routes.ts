@@ -9,6 +9,7 @@ import iazeRoutes from "./routes-iaze";
 import { ServerMetricsService, type ConnectionStats } from "./services/server-metrics";
 import { ApiKeyService } from "./services/api-key-service";
 import { WebhookService } from "./services/webhook-service";
+import { authMiddleware, requireRole } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register IAZE routes
@@ -242,13 +243,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== API KEYS ====================
 
   // Listar todas as API keys
-  app.get("/api/api-keys", async (req, res) => {
+  app.get("/api/api-keys", authMiddleware, requireRole("reseller"), async (req, res) => {
     try {
-      const { resellerId } = req.query;
-      const apiKeys = await storage.getAllApiKeys(resellerId as string);
+      const resellerId = (req as any).auth.resellerId;
+      const apiKeys = await storage.getAllApiKeys(resellerId);
       
-      // Não retornar keyHash (segurança)
-      const safe = apiKeys.map(({ keyHash, ...rest }) => rest);
+      // SECURITY: Não retornar keyHash nem webhookSecret
+      const safe = apiKeys.map(({ keyHash, webhookSecret, ...rest }) => rest);
       res.json(safe);
     } catch (error: any) {
       console.error("Erro ao listar API keys:", error);
@@ -257,25 +258,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Criar nova API key
-  app.post("/api/api-keys", async (req, res) => {
+  app.post("/api/api-keys", authMiddleware, requireRole("reseller"), async (req, res) => {
     try {
-      const validatedData = insertApiKeySchema.parse(req.body);
+      const resellerId = (req as any).auth.resellerId;
       
-      const { apiKey, fullKey } = await ApiKeyService.createApiKey(validatedData);
+      // SECURITY: Substituir resellerId do body pelo autenticado
+      const validatedData = insertApiKeySchema.parse({
+        ...req.body,
+        resellerId,
+      });
+      
+      const { apiKey, fullKey, webhookSecret } = await ApiKeyService.createApiKey(validatedData);
       
       await storage.createWhatsAppLog({
         level: "info",
         message: `API Key criada: ${apiKey.name} (${apiKey.keyPrefix}...${apiKey.keyLastChars})`,
       });
 
-      // Retornar fullKey APENAS na criação (única vez!)
-      res.json({
+      // Retornar fullKey e webhookSecret APENAS na criação (única vez!)
+      res.status(201).json({
         apiKey: {
           ...apiKey,
           keyHash: undefined, // Não expor hash
         },
         fullKey, // Mostrar chave completa apenas agora
-        warning: "ATENÇÃO: Guarde esta chave em local seguro! Ela não será mostrada novamente.",
+        webhookSecret, // Mostrar webhook secret apenas agora
+        warning: "ATENÇÃO: Guarde a API Key e o Webhook Secret em local seguro! Eles não serão mostrados novamente.",
       });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -287,13 +295,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Buscar detalhes de uma API key
-  app.get("/api/api-keys/:id", async (req, res) => {
+  app.get("/api/api-keys/:id", authMiddleware, requireRole("reseller"), async (req, res) => {
     try {
       const { id } = req.params;
+      const resellerId = (req as any).auth.resellerId;
+      
       const apiKey = await storage.getApiKey(id);
       
       if (!apiKey) {
         return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      // SECURITY: Verificar tenant isolation
+      if (apiKey.resellerId !== resellerId) {
+        return res.status(403).json({ error: "Acesso negado" });
       }
 
       // Buscar conexões associadas
@@ -303,6 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         ...apiKey,
         keyHash: undefined, // Não expor hash
+        webhookSecret: undefined, // Não expor secret após criação
         connections,
         recentWebhooks: webhookDeliveries,
       });
@@ -313,26 +329,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Atualizar API key
-  app.patch("/api/api-keys/:id", async (req, res) => {
+  app.patch("/api/api-keys/:id", authMiddleware, requireRole("reseller"), async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, webhookUrl, webhookEvents, connectionLimit, status } = req.body;
+      const resellerId = (req as any).auth.resellerId;
+      const { name, webhookUrl, webhookSecret, webhookEvents, connectionLimit, status } = req.body;
 
       const existing = await storage.getApiKey(id);
       if (!existing) {
         return res.status(404).json({ error: "API key não encontrada" });
       }
 
-      // Gerar novo webhook secret se URL mudar
-      let webhookSecret = existing.webhookSecret;
-      if (webhookUrl && webhookUrl !== existing.webhookUrl) {
-        webhookSecret = ApiKeyService.generateWebhookSecret();
+      // SECURITY: Verificar tenant isolation
+      if (existing.resellerId !== resellerId) {
+        return res.status(403).json({ error: "Acesso negado" });
       }
+
+      // Permitir update de webhook secret se fornecido
+      const finalWebhookSecret = webhookSecret || existing.webhookSecret;
 
       const updated = await storage.updateApiKey(id, {
         name,
         webhookUrl,
-        webhookSecret,
+        webhookSecret: finalWebhookSecret,
         webhookEvents,
         connectionLimit,
         status,
@@ -341,6 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         ...updated,
         keyHash: undefined,
+        webhookSecret: undefined, // Não retornar secret no update
       });
     } catch (error: any) {
       console.error("Erro ao atualizar API key:", error);
@@ -349,13 +369,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Deletar API key
-  app.delete("/api/api-keys/:id", async (req, res) => {
+  app.delete("/api/api-keys/:id", authMiddleware, requireRole("reseller"), async (req, res) => {
     try {
       const { id } = req.params;
+      const resellerId = (req as any).auth.resellerId;
       
       const apiKey = await storage.getApiKey(id);
       if (!apiKey) {
         return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      // SECURITY: Verificar tenant isolation
+      if (apiKey.resellerId !== resellerId) {
+        return res.status(403).json({ error: "Acesso negado" });
       }
 
       const deleted = await storage.deleteApiKey(id);
@@ -375,9 +401,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rotacionar token de uma API key
-  app.post("/api/api-keys/:id/rotate", async (req, res) => {
+  app.post("/api/api-keys/:id/rotate", authMiddleware, requireRole("reseller"), async (req, res) => {
     try {
       const { id } = req.params;
+      const resellerId = (req as any).auth.resellerId;
+
+      // SECURITY: Verificar tenant isolation antes de rotacionar
+      const existing = await storage.getApiKey(id);
+      if (!existing) {
+        return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      if (existing.resellerId !== resellerId) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
 
       const result = await ApiKeyService.rotateApiKey(id);
       if (!result) {
@@ -393,6 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         apiKey: {
           ...result.apiKey,
           keyHash: undefined,
+          webhookSecret: undefined,
         },
         fullKey: result.fullKey,
         warning: "ATENÇÃO: A chave anterior foi invalidada! Guarde esta nova chave.",
@@ -404,13 +442,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Buscar estatísticas de uso
-  app.get("/api/api-keys/:id/usage", async (req, res) => {
+  app.get("/api/api-keys/:id/usage", authMiddleware, requireRole("reseller"), async (req, res) => {
     try {
       const { id } = req.params;
+      const resellerId = (req as any).auth.resellerId;
       
       const apiKey = await storage.getApiKey(id);
       if (!apiKey) {
         return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      // SECURITY: Verificar tenant isolation
+      if (apiKey.resellerId !== resellerId) {
+        return res.status(403).json({ error: "Acesso negado" });
       }
 
       const connections = await storage.getApiKeyConnections(id);

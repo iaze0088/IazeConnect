@@ -85,13 +85,13 @@ export class ApiKeyService {
    */
   static async createApiKey(
     data: Omit<InsertApiKey, "keyHash" | "keyPrefix" | "keyLastChars">
-  ): Promise<{ apiKey: ApiKey; fullKey: string }> {
+  ): Promise<{ apiKey: ApiKey; fullKey: string; webhookSecret: string | null }> {
     const { fullKey, keyHash, keyPrefix, keyLastChars } = this.generateApiKey();
 
-    // Gerar webhook secret se webhookUrl foi fornecido
-    const webhookSecret = data.webhookUrl
-      ? this.generateWebhookSecret()
-      : null;
+    // SECURITY FIX: Usar webhook secret fornecido ou gerar novo se não fornecido
+    const webhookSecret = data.webhookSecret 
+      ? data.webhookSecret
+      : (data.webhookUrl ? this.generateWebhookSecret() : null);
 
     const apiKeyRecord: ApiKey = {
       id: randomUUID(),
@@ -116,6 +116,7 @@ export class ApiKeyService {
     return {
       apiKey: created,
       fullKey, // Retorna a chave completa APENAS na criação
+      webhookSecret, // Retorna webhook secret APENAS na criação
     };
   }
 
