@@ -1,8 +1,10 @@
-# IAZE - Sistema de Gerenciamento WhatsApp
+# IAZE - Sistema Multi-Tenant de Atendimento
 
 ## 📋 Visão Geral
 
-Sistema profissional de gerenciamento de conexões WhatsApp com integração WPP Connect. Permite criar múltiplas sessões WhatsApp, gerar QR Codes para conexão, monitorar status em tempo real e enviar mensagens.
+Sistema profissional multi-tenant de gerenciamento de atendimento via WhatsApp com integração WPP Connect. Suporta múltiplos revendedores com isolamento de dados, 4 tipos de usuários (Admin, Reseller, Agent, Client), e 3 canais de comunicação (WA SUPORTE, WHATSAPP, WA SITE).
+
+**Dados Importados**: 12.941 registros do backup MongoDB (3 revendas, 881 usuários, 30 clientes CRM, 2 atendentes, 4 departamentos, 736 tickets, 11.285 mensagens).
 
 ## 🏗️ Arquitetura
 
@@ -16,7 +18,9 @@ Sistema profissional de gerenciamento de conexões WhatsApp com integração WPP
 - **Runtime**: Node.js 20
 - **API**: Express.js com endpoints REST
 - **WhatsApp**: @wppconnect-team/wppconnect
-- **Storage**: In-memory storage (MemStorage) + PostgreSQL preparado
+- **Storage**: ExtendedMemStorage (in-memory) com 7 entidades IAZE + PostgreSQL preparado
+- **Autenticação**: JWT assinado (jsonwebtoken) com expiração de 7 dias
+- **Segurança**: bcrypt para hashes de senha/PIN, middleware de autorização por role
 - **Real-time**: WebSocket Server (path: /ws)
 
 ## 📁 Estrutura do Projeto
@@ -37,8 +41,12 @@ Sistema profissional de gerenciamento de conexões WhatsApp com integração WPP
 │   │   ├── lib/              # Utilitários
 │   │   └── App.tsx           # Componente raiz
 ├── server/                   # Backend Node.js
-│   ├── routes.ts            # Rotas da API
-│   ├── storage.ts           # Interface de armazenamento
+│   ├── routes.ts            # Rotas da API (WhatsApp)
+│   ├── routes-iaze.ts       # Rotas IAZE (Auth, Resellers, Agents, Tickets, etc)
+│   ├── storage.ts           # Storage WhatsApp
+│   ├── storage-extended.ts  # Storage IAZE (7 entidades)
+│   ├── import-data.ts       # Importação do backup MongoDB
+│   ├── auth.ts              # JWT + middleware de autenticação
 │   └── services/            # Serviços (WhatsApp, etc)
 ├── shared/                  # Código compartilhado
 │   └── schema.ts           # Schemas TypeScript + Zod
@@ -53,9 +61,48 @@ Sistema profissional de gerenciamento de conexões WhatsApp com integração WPP
 - **Componentes**: Shadcn/ui com elevação e interações sutis
 - **Responsivo**: Mobile-first, breakpoints: 768px (tablet), 1024px (desktop)
 
-## 🔧 Funcionalidades MVP
+## 🔧 Funcionalidades Implementadas
 
-### ✅ Implementado Completo (MVP)
+### ✅ Task 1: Importação de Dados e Autenticação (COMPLETA)
+
+**1. Sistema de Storage Estendido** (`server/storage-extended.ts`):
+   - 7 entidades: Resellers, Users, Clients, Agents, Departments, Tickets, Messages
+   - Interface IExtendedStorage com métodos CRUD completos
+   - ExtendedMemStorage com 12.941 registros importados do MongoDB
+
+**2. Sistema de Autenticação JWT** (`server/auth.ts`):
+   - Geração de tokens JWT assinados (7 dias de expiração)
+   - Middleware `authMiddleware` para validação de tokens
+   - Middleware `requireRole` para controle de acesso por role
+   - SECRET KEY via variável de ambiente SESSION_SECRET
+
+**3. Rotas de Autenticação** (`server/routes-iaze.ts`):
+   - `POST /api/auth/admin/login` - Login admin (senha bcrypt)
+   - `POST /api/auth/reseller/login` - Login revenda (email + senha)
+   - `POST /api/auth/agent/login` - Login atendente (login + senha)
+   - `POST /api/auth/client/login` - Login cliente (WhatsApp + PIN 2 dígitos)
+   - `POST /api/auth/client/register` - Registro cliente (WhatsApp + criar PIN)
+
+**4. Rotas Protegidas**:
+   - `GET /api/clients/me/tickets` - Buscar tickets do cliente logado (auth required)
+   - `GET /api/tickets/:id/messages` - Mensagens de um ticket
+   - `POST /api/tickets/:id/messages` - Enviar mensagem
+   - `GET /api/stats/dashboard` - Estatísticas do dashboard
+
+**5. Frontend Cliente** (`client/src/pages/`):
+   - `client-login.tsx` - Tela de login/registro com WhatsApp + PIN
+   - `client-chat.tsx` - Interface de chat com histórico de mensagens
+   - Authorization header automático em todas requisições (queryClient)
+   - Redirecionamento se não autenticado
+
+**6. Segurança Implementada**:
+   - ✅ PIN armazenado apenas como hash bcrypt (sem texto plano)
+   - ✅ JWT assinado (não falsificável)
+   - ✅ Expiração de tokens (7 dias)
+   - ✅ Validação de roles nos endpoints protegidos
+   - ✅ Multi-tenant com isolamento por resellerId
+
+### ✅ Implementado Completo (MVP WhatsApp)
 
 **Frontend React**:
 1. **Dashboard**: Visão geral com estatísticas de conexões

@@ -5,8 +5,13 @@ import { storage } from "./storage";
 import { whatsappService } from "./services/whatsapp-service";
 import { insertWhatsAppConnectionSchema } from "@shared/schema";
 import { z } from "zod";
+import iazeRoutes from "./routes-iaze";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register IAZE routes
+  app.use(iazeRoutes);
+  console.log("[Server] Rotas IAZE registradas com sucesso");
+  
   app.get("/api/whatsapp/connections", async (req, res) => {
     try {
       const connections = await storage.getAllWhatsAppConnections();

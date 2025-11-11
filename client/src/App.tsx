@@ -10,12 +10,16 @@ import WhatsAppPage from "@/pages/whatsapp";
 import SessionsPage from "@/pages/sessions";
 import LogsPage from "@/pages/logs";
 import SettingsPage from "@/pages/settings";
+import ClientLogin from "@/pages/client-login";
+import ClientChat from "@/pages/client-chat";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/" component={ClientLogin} />
+      <Route path="/client/chat" component={ClientChat} />
+      <Route path="/admin" component={Dashboard} />
       <Route path="/whatsapp" component={WhatsAppPage} />
       <Route path="/sessions" component={SessionsPage} />
       <Route path="/logs" component={LogsPage} />

@@ -47,6 +47,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Import backup data on startup
+  console.log("[Server] Importando dados do backup...");
+  const { importAllData } = await import("./import-data");
+  try {
+    await importAllData("attached_assets/backup_20251110_002339_1762885836046.json");
+    console.log("[Server] ✅ Dados do backup carregados com sucesso!");
+  } catch (error) {
+    console.error("[Server] ⚠️  Erro ao carregar backup:", error);
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
