@@ -1,0 +1,155 @@
+"""
+Rotas da API para sistema de botões interativos
+"""
+from fastapi import APIRouter, HTTPException, Depends
+from typing import Optional, Dict, Any
+from vendas_buttons_service import ButtonsService, ButtonConfig, Button
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+
+router = APIRouter(prefix="/api/admin/vendas-bot/buttons", tags=["vendas-buttons"])
+
+# MongoDB
+MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+DB_NAME = os.environ.get('DB_NAME', 'support_chat')
+client = AsyncIOMotorClient(MONGO_URL)
+db = client[DB_NAME]
+
+buttons_service = ButtonsService(db)
+
+# Sem auth por enquanto - TODO: adicionar depois
+def no_auth():
+    return {"user_type": "admin", "reseller_id": None}
+
+@router.get("/config")
+async def get_button_config(current_user: dict = Depends(no_auth)):
+    """Obter configuração de botões"""
+    reseller_id = current_user.get("reseller_id") if current_user.get("user_type") == "reseller" else None
+    config = await buttons_service.get_config(reseller_id)
+    return config.dict()
+
+@router.post("/config")
+async def save_button_config(
+    config: ButtonConfig, 
+    current_user: dict = Depends(no_auth)
+):
+    """Salvar configuração de botões"""
+    reseller_id = current_user.get("reseller_id") if current_user.get("user_type") == "reseller" else None
+    await buttons_service.save_config(config, reseller_id)
+    return {"ok": True, "message": "Configuração de botões salva com sucesso"}
+
+@router.post("/create-default")
+async def create_default_config(current_user: dict = Depends(no_auth)):
+    """Criar configuração padrão de botões"""
+    default_config = buttons_service.create_default_buttons()
+    reseller_id = current_user.get("reseller_id") if current_user.get("user_type") == "reseller" else None
+    await buttons_service.save_config(default_config, reseller_id)
+    return {"ok": True, "config": default_config.dict()}
+
+@router.post("/add-button")
+async def add_button(
+    button: Button,
+    parent_id: Optional[str] = None,
+    current_user: dict = Depends(no_auth)
+):
+    """Adicionar novo botão (raiz ou filho)"""
+    reseller_id = current_user.get("reseller_id") if current_user.get("user_type") == "reseller" else None
+    config = await buttons_service.get_config(reseller_id)
+    
+    if parent_id:
+        # Adicionar como filho
+        def add_to_parent(buttons, target_id, new_button):
+            for btn in buttons:
+                if btn.id == target_id:
+                    btn.sub_buttons.append(new_button)
+                    return True
+                if btn.sub_buttons:
+                    if add_to_parent(btn.sub_buttons, target_id, new_button):
+                        return True
+            return False
+        
+        if not add_to_parent(config.root_buttons, parent_id, button):
+            raise HTTPException(status_code=404, detail="Botão pai não encontrado")
+    else:
+        # Adicionar como botão raiz
+        config.root_buttons.append(button)
+    
+    await buttons_service.save_config(config, reseller_id)
+    return {"ok": True, "message": "Botão adicionado"}
+
+@router.delete("/button/{button_id}")
+async def delete_button(
+    button_id: str,
+    current_user: dict = Depends(no_auth)
+):
+    """Deletar botão"""
+    reseller_id = current_user.get("reseller_id") if current_user.get("user_type") == "reseller" else None
+    config = await buttons_service.get_config(reseller_id)
+    
+    def remove_button(buttons, target_id):
+        for i, btn in enumerate(buttons):
+            if btn.id == target_id:
+                buttons.pop(i)
+                return True
+            if btn.sub_buttons:
+                if remove_button(btn.sub_buttons, target_id):
+                    return True
+        return False
+    
+    if not remove_button(config.root_buttons, button_id):
+        raise HTTPException(status_code=404, detail="Botão não encontrado")
+    
+    await buttons_service.save_config(config, reseller_id)
+    return {"ok": True, "message": "Botão removido"}
+
+@router.put("/mode")
+async def update_mode(
+    mode: str,
+    current_user: dict = Depends(no_auth)
+):
+    """Atualizar modo (button, ia, hibrido)"""
+    if mode not in ["button", "ia", "hibrido"]:
+        raise HTTPException(status_code=400, detail="Modo inválido")
+    
+    reseller_id = current_user.get("reseller_id") if current_user.get("user_type") == "reseller" else None
+    config = await buttons_service.get_config(reseller_id)
+    config.mode = mode
+    await buttons_service.save_config(config, reseller_id)
+    return {"ok": True, "mode": mode}
+
+# Rotas públicas para interação do cliente
+public_router = APIRouter(prefix="/api/vendas/buttons", tags=["vendas-buttons-public"])
+
+@public_router.get("/{session_id}")
+async def get_buttons_for_session(session_id: str):
+    """Obter botões disponíveis para uma sessão"""
+    config = await buttons_service.get_config()
+    
+    if not config.is_enabled:
+        return {"buttons": [], "message": "Sistema de botões desabilitado"}
+    
+    if config.mode == "ia":
+        return {"buttons": [], "message": "Modo IA ativo", "use_ai": True}
+    
+    buttons = await buttons_service.get_buttons_for_user(session_id)
+    return {
+        "welcome_message": config.welcome_message,
+        "buttons": [b.dict() for b in buttons],
+        "mode": config.mode
+    }
+
+@public_router.post("/{session_id}/click")
+async def handle_button_click_endpoint(session_id: str, data: Dict[str, str]):
+    """Processar clique em botão"""
+    button_id = data.get("button_id")
+    if not button_id:
+        raise HTTPException(status_code=400, detail="button_id é obrigatório")
+    
+    result = await buttons_service.handle_button_click(session_id, button_id)
+    return result
+
+@public_router.post("/{session_id}/reset")
+async def reset_session_endpoint(session_id: str):
+    """Resetar sessão para menu principal"""
+    await buttons_service.reset_session(session_id)
+    return {"ok": True, "message": "Sessão resetada"}

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botões Interativos - WA Site</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .mode-selector { display: flex; gap: 10px; margin-bottom: 30px; }
+        .mode-btn { flex: 1; padding: 15px; border: 2px solid #ddd; background: white; border-radius: 8px; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+        .mode-btn:hover { background: #f0f0f0; }
+        .mode-btn.active { background: #7c3aed; color: white; border-color: #7c3aed; }
+        .welcome-section { margin-bottom: 30px; }
+        .welcome-section label { display: block; font-weight: bold; margin-bottom: 10px; }
+        .welcome-section textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical; }
+        .buttons-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .add-btn { background: #7c3aed; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        .add-btn:hover { background: #6d28d9; }
+        .button-list { display: flex; flex-direction: column; gap: 10px; }
+        .button-item { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; }
+        .button-item-header { display: flex; justify-content: between; align-items: center; }
+        .button-label { font-weight: bold; color: #333; font-size: 18px; }
+        .button-text { color: #666; font-size: 14px; margin-top: 5px; }
+        .button-actions { display: flex; gap: 8px; }
+        .action-btn { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .action-btn:hover { background: #f5f5f5; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 600px; }
+        .modal-content h2 { margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-cancel { background: #e5e5e5; color: #333; }
+        .btn-save { background: #7c3aed; color: white; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Sistema de Botões Interativos</h1>
+        <p class="subtitle">Configure botões interativos para o WA Site com hierarquia e modos de operação</p>
+
+        <!-- Seletor de Modo -->
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="setMode('button')">
+                📱 APENAS BOTÕES
+            </button>
+            <button class="mode-btn" onclick="setMode('ia')">
+                🤖 APENAS IA
+            </button>
+            <button class="mode-btn" onclick="setMode('hibrido')">
+                ⚡ HÍBRIDO (Botões + IA)
+            </button>
+        </div>
+
+        <!-- Mensagem de Boas-Vindas -->
+        <div class="welcome-section">
+            <label>Mensagem de Boas-Vindas:</label>
+            <textarea id="welcomeMessage" rows="3" placeholder="Ex: Olá! Como posso ajudar você hoje?">Por favor, selecione uma das opções abaixo:</textarea>
+            <button class="add-btn" style="margin-top: 10px;" onclick="saveWelcome()">Salvar Mensagem</button>
+        </div>
+
+        <!-- Lista de Botões -->
+        <div class="buttons-header">
+            <h2>Botões Configurados:</h2>
+            <button class="add-btn" onclick="openModal()">➕ Adicionar Botão</button>
+        </div>
+
+        <div class="button-list" id="buttonList">
+            <div class="empty-state">
+                Nenhum botão configurado. Clique em "Adicionar Botão" para começar.
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Adicionar Botão</h2>
+            <div class="form-group">
+                <label>Texto do Botão:</label>
+                <input type="text" id="btnLabel" placeholder="Ex: SUPORTE, TESTE GRÁTIS">
+            </div>
+            <div class="form-group">
+                <label>Mensagem de Resposta:</label>
+                <textarea id="btnResponse" rows="4" placeholder="Mensagem enviada quando o botão for clicado"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="action-btn btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="action-btn btn-save" onclick="saveButton()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'button';
+        let buttons = [];
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            alert(`Modo alterado para: ${mode.toUpperCase()}`);
+        }
+
+        function openModal() {
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.getElementById('btnLabel').value = '';
+            document.getElementById('btnResponse').value = '';
+        }
+
+        function saveButton() {
+            const label = document.getElementById('btnLabel').value;
+            const response = document.getElementById('btnResponse').value;
+            
+            if (!label || !response) {
+                alert('Preencha todos os campos!');
+                return;
+            }
+
+            buttons.push({ id: Date.now(), label, response });
+            renderButtons();
+            closeModal();
+            alert('Botão adicionado com sucesso!');
+        }
+
+        function deleteButton(id) {
+            if (confirm('Deseja realmente excluir este botão?')) {
+                buttons = buttons.filter(b => b.id !== id);
+                renderButtons();
+            }
+        }
+
+        function renderButtons() {
+            const list = document.getElementById('buttonList');
+            if (buttons.length === 0) {
+                list.innerHTML = '<div class="empty-state">Nenhum botão configurado. Clique em "Adicionar Botão" para começar.</div>';
+                return;
+            }
+
+            list.innerHTML = buttons.map(btn => `
+                <div class="button-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div class="button-label">${btn.label}</div>
+                            <div class="button-text">${btn.response.substring(0, 80)}...</div>
+                        </div>
+                        <div class="button-actions">
+                            <button class="action-btn" onclick="deleteButton(${btn.id})">🗑️ Excluir</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveWelcome() {
+            const msg = document.getElementById('welcomeMessage').value;
+            alert('Mensagem de boas-vindas salva: ' + msg);
+        }
+
+        // Inicializar com botões de exemplo
+        buttons = [
+            { id: 1, label: '📞 SUPORTE', response: 'Você será atendido por nossa equipe de suporte em breve.' },
+            { id: 2, label: '🎁 TESTE GRÁTIS', response: 'Ótimo! Vamos configurar seu teste grátis.' },
+            { id: 3, label: '💼 SEJA REVENDEDOR', response: 'Excelente escolha! Nossas condições de revenda são:' }
+        ];
+        renderButtons();
+    </script>
+</body>
+</html>

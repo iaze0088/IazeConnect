@@ -1,0 +1,321 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f8fafc;
+  overflow-x: hidden !important; /* FORÇA - Previne scroll horizontal global */
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fullscreen mode APENAS para ClientChat */
+.client-chat-fullscreen {
+  height: 100vh;
+  height: 100dvh; /* Dynamic Viewport Height */
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
+.client-chat-fullscreen body,
+.client-chat-fullscreen html,
+.client-chat-fullscreen #root {
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
+/* PWA Fullscreen - Remove address bar on iOS/Android */
+@supports(padding: max(0px)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* PWA Mode: Remove faixa branca e garantir fullscreen */
+@media all and (display-mode: standalone),
+       all and (display-mode: fullscreen) {
+  html, body {
+    height: 100vh;
+    height: 100dvh; /* Dynamic Viewport Height - remove barra de navegação */
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #075e54; /* Cor do tema para evitar flash branco */
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+  }
+  
+  #root {
+    height: 100vh;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+  }
+  
+  /* Remove espaços extras */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Prevenir scroll do body quando teclado aparecer */
+  body.keyboard-open {
+    position: fixed;
+    width: 100%;
+  }
+}
+
+/* Hide scrollbar but keep functionality */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.App {
+  min-height: 100vh;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+/* Container de mensagens - NUNCA deve ter scroll horizontal */
+.messages-container,
+.chat-messages,
+.chat-container,
+.message-list,
+[class*="messages"],
+[class*="chat"],
+[role="log"],
+div[style*="overflow"] {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* FORÇA: Todos os elementos respeitam viewport */
+* {
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+/* Todas as imagens, vídeos e áudios devem respeitar o container */
+.messages-container img,
+.messages-container video,
+.messages-container audio,
+.chat-messages img,
+.chat-messages video,
+.chat-messages audio,
+img, video, audio {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+/* Remove qualquer scroll horizontal forçado */
+html {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+}
+
+/* Fix para ScrollArea do Radix UI */
+[data-radix-scroll-area-viewport] {
+  overflow-x: hidden !important;
+  max-width: 100%;
+}
+
+/* Fix para containers flex que podem causar overflow */
+.flex, [class*="flex"] {
+  max-width: 100%;
+}
+
+/* Fix para elementos absolute/fixed */
+.absolute, .fixed, [class*="absolute"], [class*="fixed"] {
+  max-width: 100vw;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Message bubbles */
+.message-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.message-bubble.client {
+  background: #dcf8c6;
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+}
+
+.message-bubble.agent {
+  background: white;
+  margin-right: auto;
+  border-bottom-left-radius: 4px;
+}
+
+/* Ticket status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.em-espera {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.atendendo {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.finalizadas {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* Phone mockup */
+.phone-mockup {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 36px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  border: 8px solid #1f2937;
+}
+
+/* Glass effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Pulse animation for notifications */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Input field - garantir que fique visível quando teclado aparecer */
+input[data-testid="client-message-input"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Prevenir zoom ao focar input em iOS */
+input[data-testid="client-message-input"]:focus {
+  font-size: 16px !important; /* Previne zoom automático no iOS */
+}
+
+/* Ensure input area stays visible when keyboard appears */
+@media (max-width: 768px) {
+  input[data-testid="client-message-input"]:focus {
+    position: relative;
+    z-index: 1000;
+  }
+}
+
+/* Hide "Made with Emergent" watermark */
+[class*="poweredBy"],
+[class*="PoweredBy"],
+[class*="emergent"],
+[class*="Emergent"],
+a[href*="emergent"],
+div:has(> a[href*="emergent"]) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}

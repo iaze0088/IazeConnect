@@ -1,0 +1,83 @@
+# ========================================
+# COMANDOS PARA COPIAR E COLAR
+# ========================================
+
+# ----------------------------------------
+# PASSO 1: NO SEU COMPUTADOR (Windows/Mac/Linux)
+# ----------------------------------------
+
+# Baixar pacote do Emergent
+scp root@salesbot-iaze.preview.emergentagent.com:/app/migration/iaze_migration_package.tar.gz ~/Downloads/
+
+# Enviar para servidor dedicado
+scp ~/Downloads/iaze_migration_package.tar.gz root@198.96.94.106:/root/
+
+
+# ----------------------------------------
+# PASSO 2: NO SERVIDOR DEDICADO (198.96.94.106)
+# ----------------------------------------
+
+# Conectar no servidor
+ssh root@198.96.94.106
+# Senha: 102030ab
+
+# Extrair arquivos
+cd /root
+tar -xzf iaze_migration_package.tar.gz
+
+# Executar instalação (FAZ TUDO SOZINHO!)
+bash install_completo.sh
+
+# Aguardar terminar (5-10 minutos)
+
+
+# ----------------------------------------
+# PASSO 3: CONFIGURAR DNS (no provedor do domínio)
+# ----------------------------------------
+
+# Adicionar no painel do provedor onde comprou suporte.help:
+
+# Registro 1:
+Tipo: A
+Nome: @
+Valor: 198.96.94.106
+TTL: 3600
+
+# Registro 2:
+Tipo: A
+Nome: vpn
+Valor: 198.96.94.106
+TTL: 3600
+
+
+# ----------------------------------------
+# PRONTO! AGUARDAR DNS (5-60 minutos)
+# ----------------------------------------
+
+# Acessar:
+https://suporte.help/revenda/login
+
+# Login:
+Email: admin@suporte.help
+Senha: 102030@ab
+
+
+# ========================================
+# SE PRECISAR VER LOGS
+# ========================================
+
+cd /opt/iaze
+docker-compose logs -f
+
+
+# ========================================
+# SE PRECISAR REINICIAR
+# ========================================
+
+cd /opt/iaze
+docker-compose restart
+
+
+# ========================================
+# FIM
+# ========================================

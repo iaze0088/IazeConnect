@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Agent Token</title>
+</head>
+<body>
+    <h1>Test Agent Dashboard Token</h1>
+    <button onclick="testLogin()">1. Login como fabioteste</button>
+    <button onclick="testGetTickets()">2. Get Tickets com token</button>
+    <button onclick="checkLocalStorage()">3. Ver localStorage</button>
+    <button onclick="clearStorage()">4. Limpar localStorage</button>
+    <pre id="output"></pre>
+
+    <script>
+        const BACKEND_URL = 'https://wppconnect-fix.preview.emergentagent.com/api';
+        const output = document.getElementById('output');
+
+        function log(msg) {
+            output.textContent += msg + '\n';
+        }
+
+        async function testLogin() {
+            output.textContent = '';
+            log('🔐 Fazendo login como fabioteste...');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/agent/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login: 'fabioteste', password: '123' })
+                });
+                
+                const data = await response.json();
+                log('✅ Login bem-sucedido!');
+                log('Token: ' + data.token.substring(0, 50) + '...');
+                log('Reseller ID: ' + data.reseller_id);
+                log('User Type: ' + data.user_type);
+                
+                // Salvar no localStorage
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user_type', data.user_type);
+                localStorage.setItem('user_data', JSON.stringify(data.user_data));
+                
+                log('\n✅ Token salvo no localStorage');
+            } catch (error) {
+                log('❌ Erro: ' + error.message);
+            }
+        }
+
+        async function testGetTickets() {
+            output.textContent = '';
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                log('❌ Nenhum token encontrado! Faça login primeiro.');
+                return;
+            }
+            
+            log('🎫 Buscando tickets com token...');
+            log('Token: ' + token.substring(0, 50) + '...');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/tickets`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const tickets = await response.json();
+                log(`\n✅ Resposta recebida: ${tickets.length} tickets`);
+                log('\nTickets:');
+                log(JSON.stringify(tickets, null, 2));
+                
+                if (tickets.length === 0) {
+                    log('\n✅ CORRETO! Agent fabioteste vê 0 tickets (isolamento OK)');
+                } else {
+                    log(`\n❌ PROBLEMA! Agent deveria ver 0 tickets, mas vê ${tickets.length}`);
+                }
+            } catch (error) {
+                log('❌ Erro: ' + error.message);
+            }
+        }
+
+        function checkLocalStorage() {
+            output.textContent = '';
+            log('📦 Conteúdo do localStorage:\n');
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                log(`${key}: ${value.substring(0, 100)}...`);
+            }
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            output.textContent = '✅ localStorage e sessionStorage limpos!';
+        }
+    </script>
+</body>
+</html>

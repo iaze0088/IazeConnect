@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TESTE DE LOGIN - CYBERTV</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background: #0056b3; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 TESTE DE LOGIN SIMPLIFICADO</h1>
+        
+        <div class="info">
+            <strong>📋 CREDENCIAIS DE TESTE:</strong><br>
+            Login: fabioteste<br>
+            Senha: 123
+        </div>
+
+        <form id="loginForm">
+            <input type="text" id="login" placeholder="Login" value="fabioteste">
+            <input type="password" id="password" placeholder="Senha" value="123">
+            <button type="submit">🔑 FAZER LOGIN</button>
+        </form>
+
+        <div id="result" class="result"></div>
+
+        <div id="tickets" style="margin-top: 20px; display: none;">
+            <h2>📊 Tickets Retornados:</h2>
+            <div id="ticketsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = window.location.origin;
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const login = document.getElementById('login').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            const ticketsDiv = document.getElementById('tickets');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '⏳ Fazendo login...';
+            
+            try {
+                // 1. LOGIN
+                const loginResponse = await fetch(`${BACKEND_URL}/api/auth/agent/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login, password })
+                });
+                
+                if (!loginResponse.ok) {
+                    const error = await loginResponse.json();
+                    throw new Error(error.detail || 'Erro no login');
+                }
+                
+                const loginData = await loginResponse.json();
+                const token = loginData.token;
+                const reseller_id = loginData.reseller_id;
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    ✅ Login bem-sucedido!<br>
+                    <strong>Reseller ID:</strong> ${reseller_id || 'Admin Master'}<br>
+                    <strong>Token:</strong> ${token.substring(0, 30)}...
+                `;
+                
+                // 2. BUSCAR TICKETS
+                resultDiv.innerHTML += '<br><br>⏳ Buscando tickets...';
+                
+                const ticketsResponse = await fetch(`${BACKEND_URL}/api/tickets`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!ticketsResponse.ok) {
+                    throw new Error('Erro ao buscar tickets');
+                }
+                
+                const tickets = await ticketsResponse.json();
+                
+                // MOSTRAR RESULTADO
+                ticketsDiv.style.display = 'block';
+                const ticketsList = document.getElementById('ticketsList');
+                
+                if (tickets.length === 0) {
+                    ticketsList.innerHTML = `
+                        <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 4px;">
+                            <strong>✅ PERFEITO!</strong><br>
+                            Retornou <strong>0 tickets</strong> (correto!)<br>
+                            O filtro multi-tenant está funcionando!
+                        </div>
+                    `;
+                } else {
+                    ticketsList.innerHTML = `
+                        <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px;">
+                            <strong>❌ PROBLEMA!</strong><br>
+                            Retornou <strong>${tickets.length} tickets</strong><br>
+                            Deveria retornar 0 tickets!<br><br>
+                            <strong>Reseller IDs dos tickets:</strong><br>
+                            ${tickets.slice(0, 5).map(t => 
+                                `- ${t.reseller_id || 'None (Admin)'}`
+                            ).join('<br>')}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Erro: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "timestamp": "2025-10-24T16:56:41.185630",
+  "summary": {
+    "passed": 6,
+    "total": 6,
+    "success_rate": 100.0
+  },
+  "tests": [
+    {
+      "test": "Login Reseller",
+      "success": true,
+      "details": "Token obtido, Reseller ID: 49376e6f-4122-4fcf-88ab-97965c472711",
+      "timestamp": "2025-10-24T16:56:40.734525"
+    },
+    {
+      "test": "Criar Conex\u00e3o",
+      "success": true,
+      "details": "ID: 5d0452c1-1273-4c8d-bc4a-1058dbf39391, Instance: fabio_1_1761324563, Status: connected",
+      "timestamp": "2025-10-24T16:56:40.779642"
+    },
+    {
+      "test": "Polling Status",
+      "success": true,
+      "details": "Status mudou para 'connected', QR removido, Phone: 5519982129002",
+      "timestamp": "2025-10-24T16:56:40.825184"
+    },
+    {
+      "test": "Webhook Mensagem",
+      "success": true,
+      "details": "Ticket ID: ee9b3c8d-7a63-46b8-a716-aec6e7bd5a10, Departamento: WHATSAPP 1",
+      "timestamp": "2025-10-24T16:56:40.868401"
+    },
+    {
+      "test": "Login Agente",
+      "success": true,
+      "details": "Token obtido, Agent ID: 6254a141-af9e-4be0-a77a-016030482db7",
+      "timestamp": "2025-10-24T16:56:41.143279"
+    },
+    {
+      "test": "Listar Tickets",
+      "success": true,
+      "details": "Encontrados 2 tickets, 2 do WhatsApp. Primeiro: WhatsApp de Fabio Silva",
+      "timestamp": "2025-10-24T16:56:41.185381"
+    }
+  ],
+  "configuration": {
+    "backend_url": "https://wppconnect-fix.preview.emergentagent.com",
+    "reseller_credentials": {
+      "email": "fabio@gmail.com",
+      "password": "102030ab"
+    },
+    "agent_credentials": {
+      "username": "fabio123",
+      "password": "fabio123"
+    },
+    "expected_data": {
+      "reseller_id": "49376e6f-4122-4fcf-88ab-97965c472711",
+      "instance_name": "fabio_1_1761324563",
+      "department_name": "WHATSAPP 1",
+      "agent_id": "6254a141-af9e-4be0-a77a-016030482db7"
+    }
+  }
+}

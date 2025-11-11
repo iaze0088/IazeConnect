@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Status do Sistema - IAZE</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .status-card {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-ok { border-left: 5px solid #4CAF50; }
+        .status-error { border-left: 5px solid #f44336; }
+        .status-warning { border-left: 5px solid #ff9800; }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 0; }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .info { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Status do Sistema IAZE</h1>
+    
+    <div class="status-card status-ok">
+        <h2>✅ Backend Interno</h2>
+        <p><strong>Status:</strong> RODANDO</p>
+        <p><strong>Porta:</strong> 8001</p>
+        <p><strong>URL Interna:</strong> http://127.0.0.1:8001</p>
+        <pre>curl http://127.0.0.1:8001/api/health
+{"status":"healthy","service":"backend"}</pre>
+    </div>
+
+    <div class="status-card status-ok">
+        <h2>✅ Frontend Interno</h2>
+        <p><strong>Status:</strong> RODANDO (Production Build)</p>
+        <p><strong>Porta:</strong> 3000</p>
+        <p><strong>URL Interna:</strong> http://127.0.0.1:3000</p>
+        <p><strong>Backend URL:</strong> http://151.243.218.223</p>
+    </div>
+
+    <div class="status-card status-ok">
+        <h2>✅ MongoDB</h2>
+        <p><strong>Status:</strong> CONECTADO</p>
+        <p><strong>Database:</strong> support_chat</p>
+    </div>
+
+    <div class="status-card status-error">
+        <h2>❌ Acesso Externo</h2>
+        <p><strong>Status:</strong> 502 Bad Gateway</p>
+        <p><strong>URL:</strong> http://151.243.218.223</p>
+        <p class="info">⚠️ O erro 502 indica que o Kubernetes Ingress não está roteando corretamente para os serviços internos.</p>
+    </div>
+
+    <div class="status-card status-warning">
+        <h2>🔍 Diagnóstico</h2>
+        <p><strong>Problema Identificado:</strong></p>
+        <ul>
+            <li>✅ Serviços internos (Backend: 8001, Frontend: 3000) estão funcionando perfeitamente</li>
+            <li>✅ Backend responde corretamente a requests locais</li>
+            <li>✅ Frontend build está atualizado com REACT_APP_BACKEND_URL correto</li>
+            <li>❌ Kubernetes Ingress Controller retorna 502 Bad Gateway</li>
+        </ul>
+        
+        <p><strong>Causa Provável:</strong></p>
+        <p>O Kubernetes Ingress está esperando serviços nas portas 80/443, mas o container usa portas 3000/8001. 
+        O Ingress precisa ser configurado externamente para rotear:</p>
+        <pre>
+http://151.243.218.223/api/* → Container Backend (porta 8001)
+http://151.243.218.223/*     → Container Frontend (porta 3000)
+        </pre>
+
+        <p><strong>Solução:</strong></p>
+        <p>Este é um ambiente Kubernetes gerenciado. O roteamento externo (Ingress) precisa ser configurado 
+        através da plataforma Emergent ou pelo administrador do cluster Kubernetes.</p>
+    </div>
+
+    <div class="status-card status-warning">
+        <h2>📋 Informações Técnicas</h2>
+        <pre>
+Ambiente: Kubernetes Container
+Serviços Rodando:
+- backend (uvicorn) - porta 8001
+- frontend (serve) - porta 3000  
+- mongodb - porta 27017
+- nginx-code-proxy - porta 8080 (code-server)
+
+Variáveis de Ambiente:
+- REACT_APP_BACKEND_URL=http://151.243.218.223
+- APP_URL=http://151.243.218.223
+- MONGO_URL=mongodb://localhost:27017
+
+Tenant Middleware:
+- master_domains inclui: 151.243.218.223, suporte.help
+        </pre>
+    </div>
+
+    <div class="status-card status-ok">
+        <h2>✅ Credenciais de Teste</h2>
+        <pre>
+ADMIN:
+Email: admin@admin.com
+Senha: 102030@ab
+
+ATENDENTES:
+Usuario: biancaatt, jessicaatt, andressaatt, leticiaatt
+Senha: ab181818ab
+
+REVENDEDOR:
+Email: fabioro@example.com
+Senha: 102030a
+        </pre>
+    </div>
+
+    <script>
+        console.log('%c🔧 Sistema IAZE - Status Page', 'font-size: 20px; color: #4CAF50; font-weight: bold');
+        console.log('Backend: http://127.0.0.1:8001');
+        console.log('Frontend: http://127.0.0.1:3000');
+        console.log('Problema: Kubernetes Ingress não roteando (502 Bad Gateway)');
+    </script>
+</body>
+</html>

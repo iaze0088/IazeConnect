@@ -1,0 +1,109 @@
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║   🚀 GUIA RÁPIDO - ATUALIZAÇÃO SERVIDOR EXTERNO             ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+📦 PACOTE: vendas_chat_fix_FINAL.tar.gz (9.2 KB)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 OPÇÃO 1: INSTALAÇÃO AUTOMÁTICA (RECOMENDADO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣ Baixe o pacote do ambiente de desenvolvimento:
+   
+   No seu terminal LOCAL, execute:
+   
+   scp root@198.96.94.106:/app/vendas_chat_fix_FINAL.tar.gz .
+   
+   (Substitua o IP pelo do seu servidor de desenvolvimento se diferente)
+
+2️⃣ Faça upload para o servidor externo:
+   
+   scp vendas_chat_fix_FINAL.tar.gz root@SEU_SERVIDOR_EXTERNO:/root/
+
+3️⃣ Conecte ao servidor externo:
+   
+   ssh root@SEU_SERVIDOR_EXTERNO
+
+4️⃣ Execute a instalação:
+   
+   cd /root
+   tar -xzf vendas_chat_fix_FINAL.tar.gz
+   chmod +x INSTALAR_VENDAS_FIX.sh
+   sudo ./INSTALAR_VENDAS_FIX.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 OPÇÃO 2: INSTALAÇÃO MANUAL (Se preferir)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣ Instalar FFmpeg no servidor externo:
+   
+   sudo apt-get update
+   sudo apt-get install -y ffmpeg
+
+2️⃣ Fazer backup dos arquivos atuais:
+   
+   cd /opt/iaze
+   mkdir -p backup_vendas_$(date +%Y%m%d)
+   cp frontend/src/pages/VendasChatNew.* backup_vendas_$(date +%Y%m%d)/
+
+3️⃣ Copiar arquivos atualizados:
+   
+   cd /root
+   tar -xzf vendas_chat_fix_FINAL.tar.gz
+   tar -xzf vendas_chat_fix_*.tar.gz -C /opt/iaze/
+
+4️⃣ Reiniciar serviços:
+   
+   supervisorctl restart backend
+   supervisorctl restart frontend
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ VERIFICAÇÃO PÓS-INSTALAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ FFmpeg instalado:
+  ffmpeg -version
+  
+□ Serviços rodando:
+  supervisorctl status
+  
+□ Chat funcionando:
+  Acesse: https://suporte.help/vendas
+  
+  Testes:
+  ✓ Mensagens do cliente à DIREITA (verde)
+  ✓ Mensagens da IA à ESQUERDA (branco)
+  ✓ Botões maiores e visíveis
+  ✓ Upload de áudio funciona sem erro
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 CORREÇÕES INCLUÍDAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Erro "Erro ao processar áudio" → CORRIGIDO
+✅ Conversas misturadas → CORRIGIDO  
+✅ Botões muito pequenos → CORRIGIDOS (44px → 52px)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 ARQUIVOS NO PACOTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+vendas_chat_fix_FINAL.tar.gz
+├── vendas_chat_fix_20251029_225607.tar.gz (arquivos frontend)
+├── INSTALAR_VENDAS_FIX.sh (script automático)
+└── README_INSTALACAO.md (documentação completa)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏱️  TEMPO ESTIMADO: 2-3 minutos
+🔒 SEGURO: Backup automático antes de qualquer mudança
+⚡ SEM DOWNTIME: Apenas reinício rápido dos serviços
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

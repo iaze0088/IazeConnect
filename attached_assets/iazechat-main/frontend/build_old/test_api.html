@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Test API</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <div id="result"></div>
+    
+    <script>
+        const BACKEND_URL = "http://suporte.help";
+        const API_URL = BACKEND_URL + "/api";
+        
+        async function testLogin() {
+            console.log("Testing with URL:", API_URL + "/auth/admin/login");
+            try {
+                const response = await axios.post(API_URL + "/auth/admin/login", {
+                    password: "102030@ab"
+                });
+                document.getElementById("result").innerHTML = "SUCCESS: " + JSON.stringify(response.data);
+            } catch (error) {
+                document.getElementById("result").innerHTML = "ERROR: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

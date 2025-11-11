@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Download Prompt IA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        textarea {
+            width: 100%;
+            height: 400px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .stats {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>📥 Download Prompt IA Otimizado</h1>
+        
+        <div class="stats">
+            <strong>✅ Tamanho:</strong> 393.532 caracteres<br>
+            <strong>✅ Redução:</strong> 47.1% (de 744k para 393k)<br>
+            <strong>✅ Status:</strong> Pronto para uso!
+        </div>
+
+        <div>
+            <a href="PROMPT_IA_FINAL_UTF8.txt" download="PROMPT_IA_OPTIMIZED.txt" class="btn">
+                💾 Download Direto (.txt)
+            </a>
+            <button onclick="copiar()" class="btn btn-success">
+                📋 Copiar Conteúdo
+            </button>
+        </div>
+
+        <h3>Prévia do Conteúdo:</h3>
+        <textarea id="content" readonly>Carregando...</textarea>
+    </div>
+
+    <script>
+        fetch('PROMPT_IA_FINAL_UTF8.txt')
+            .then(r => r.text())
+            .then(data => {
+                document.getElementById('content').value = data;
+                window.promptContent = data;
+            })
+            .catch(e => {
+                document.getElementById('content').value = 'Erro: ' + e;
+            });
+
+        function copiar() {
+            const t = document.getElementById('content');
+            t.select();
+            document.execCommand('copy');
+            alert('✅ Copiado!');
+        }
+    </script>
+</body>
+</html>

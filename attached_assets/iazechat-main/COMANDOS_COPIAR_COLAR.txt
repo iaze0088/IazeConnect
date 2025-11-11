@@ -1,0 +1,207 @@
+═══════════════════════════════════════════════════════════════
+  INSTALAÇÃO EVOLUTION API v2.3.6 - COPIAR E COLAR
+═══════════════════════════════════════════════════════════════
+
+📍 ONDE EXECUTAR: Servidor 45.157.157.69 (via SSH)
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 1: CONECTAR NO SERVIDOR
+═══════════════════════════════════════════════════════════════
+
+ssh root@45.157.157.69
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 2: PARAR CONTAINERS ANTIGOS
+═══════════════════════════════════════════════════════════════
+
+docker stop evolution-api postgres redis 2>/dev/null
+docker rm evolution-api postgres redis 2>/dev/null
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 3: CRIAR DIRETÓRIO E BAIXAR EVOLUTION
+═══════════════════════════════════════════════════════════════
+
+mkdir -p /opt/evolution-api
+cd /opt/evolution-api
+wget https://customer-assets.emergentagent.com/job_wa-bridge-1/artifacts/1v3ots2w_evolution-api-2.3.6.tar.gz -O evolution.tar.gz
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 4: EXTRAIR ARQUIVOS
+═══════════════════════════════════════════════════════════════
+
+tar -xzf evolution.tar.gz
+cd evolution-api-2.3.6
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 5: CRIAR ARQUIVO .ENV (COPIE TUDO ATÉ A LINHA "EOF")
+═══════════════════════════════════════════════════════════════
+
+cat > .env << 'EOF'
+SERVER_NAME=evolution
+SERVER_TYPE=http
+SERVER_PORT=8080
+SERVER_URL=http://evolution.suporte.help:8080
+
+CORS_ORIGIN=*
+CORS_METHODS=GET,POST,PUT,DELETE
+CORS_CREDENTIALS=true
+
+LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS
+LOG_COLOR=true
+LOG_BAILEYS=error
+
+DEL_INSTANCE=false
+
+DATABASE_PROVIDER=postgresql
+POSTGRES_HOST=evolution-postgres
+POSTGRES_PORT=5432
+POSTGRES_USER=evolution
+POSTGRES_PASSWORD=evolution_secure_2025
+POSTGRES_DATABASE=evolution_db
+DATABASE_CONNECTION_URI=postgresql://evolution:evolution_secure_2025@evolution-postgres:5432/evolution_db?schema=evolution_api
+DATABASE_CONNECTION_CLIENT_NAME=evolution_iaze
+
+DATABASE_SAVE_DATA_INSTANCE=true
+DATABASE_SAVE_DATA_NEW_MESSAGE=true
+DATABASE_SAVE_MESSAGE_UPDATE=true
+DATABASE_SAVE_DATA_CONTACTS=true
+DATABASE_SAVE_DATA_CHATS=true
+DATABASE_SAVE_DATA_LABELS=true
+DATABASE_SAVE_DATA_HISTORIC=true
+
+CACHE_REDIS_ENABLED=true
+CACHE_REDIS_URI=redis://evolution-redis:6379/6
+CACHE_REDIS_TTL=604800
+CACHE_REDIS_PREFIX_KEY=evolution
+CACHE_REDIS_SAVE_INSTANCES=true
+
+AUTHENTICATION_API_KEY=iaze-evolution-2025-secure-key
+AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+
+TELEMETRY_ENABLED=false
+EOF
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 6: AJUSTAR DOCKER-COMPOSE
+═══════════════════════════════════════════════════════════════
+
+sed -i 's/127.0.0.1:8080:8080/8080:8080/g' docker-compose.yaml
+sed -i '/dokploy-network:/d' docker-compose.yaml
+sed -i '/external: true/d' docker-compose.yaml
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 7: INICIAR EVOLUTION API
+═══════════════════════════════════════════════════════════════
+
+docker network create evolution-net 2>/dev/null || true
+docker-compose up -d
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 8: AGUARDAR E VERIFICAR STATUS
+═══════════════════════════════════════════════════════════════
+
+sleep 30
+docker-compose ps
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 9: TESTAR API
+═══════════════════════════════════════════════════════════════
+
+curl http://localhost:8080
+
+
+═══════════════════════════════════════════════════════════════
+PASSO 10: VERIFICAR VOLUMES PERSISTENTES
+═══════════════════════════════════════════════════════════════
+
+docker volume ls | grep evolution
+
+
+═══════════════════════════════════════════════════════════════
+✅ PRONTO! EVOLUTION API v2.3.6 INSTALADA
+═══════════════════════════════════════════════════════════════
+
+🔗 URL: http://evolution.suporte.help:8080
+🔑 API Key: iaze-evolution-2025-secure-key
+
+Volumes criados:
+  • evolution_instances (dados das instâncias WhatsApp)
+  • postgres_data (banco de dados PostgreSQL)
+  • evolution_redis (cache Redis)
+
+
+═══════════════════════════════════════════════════════════════
+📋 COMANDOS ÚTEIS
+═══════════════════════════════════════════════════════════════
+
+Ver logs em tempo real:
+  docker-compose logs -f api
+
+Ver status dos containers:
+  docker-compose ps
+
+Reiniciar Evolution API:
+  docker-compose restart api
+
+Parar tudo:
+  docker-compose down
+
+Reiniciar tudo:
+  docker-compose restart
+
+
+═══════════════════════════════════════════════════════════════
+🔍 TESTE DE FUNCIONAMENTO
+═══════════════════════════════════════════════════════════════
+
+# Teste 1: API respondendo
+curl http://localhost:8080
+
+# Teste 2: Criar instância de teste
+curl -X POST http://localhost:8080/instance/create \
+  -H "apikey: iaze-evolution-2025-secure-key" \
+  -H "Content-Type: application/json" \
+  -d '{"instanceName":"test_instance","qrcode":true}'
+
+# Teste 3: Listar instâncias
+curl http://localhost:8080/instance/fetchInstances \
+  -H "apikey: iaze-evolution-2025-secure-key"
+
+
+═══════════════════════════════════════════════════════════════
+⚠️ SE ALGO DER ERRADO
+═══════════════════════════════════════════════════════════════
+
+# Ver logs completos do Evolution API
+docker-compose logs api
+
+# Ver logs do PostgreSQL
+docker-compose logs evolution-postgres
+
+# Ver logs do Redis
+docker-compose logs redis
+
+# Reiniciar tudo do zero (apaga dados!)
+docker-compose down -v
+docker-compose up -d
+
+
+═══════════════════════════════════════════════════════════════
+📞 APÓS INSTALAR
+═══════════════════════════════════════════════════════════════
+
+1. Me avise que terminou a instalação
+2. Vou testar a integração com o IAZE
+3. Vamos criar uma nova conexão WhatsApp
+4. Testar envio e recebimento de mensagens
+
+═══════════════════════════════════════════════════════════════

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Base de Conhecimento</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .login-header p {
+            color: #666;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-login:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .error-message {
+            background: #dc3545;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .info-box {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .info-box strong {
+            color: #333;
+        }
+        
+        .info-box code {
+            background: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #e83e8c;
+            font-family: monospace;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .back-link:hover {
+            color: #764ba2;
+        }
+        
+        .admin-content {
+            display: none;
+        }
+        
+        .admin-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .admin-content textarea {
+            width: 100%;
+            min-height: 400px;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        
+        .btn-save {
+            background: #28a745;
+        }
+        
+        .btn-save:hover {
+            background: #218838;
+        }
+        
+        .btn-logout {
+            background: #dc3545;
+            margin-top: 10px;
+        }
+        
+        .btn-logout:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Login Form -->
+        <div id="loginSection">
+            <div class="login-header">
+                <h1>🔒 Área do Administrador</h1>
+                <p>Base de Conhecimento IA</p>
+            </div>
+            
+            <div id="errorMessage" class="error-message"></div>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">Usuário</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" class="btn-login">Entrar</button>
+            </form>
+            
+            <a href="/base-conhecimento.html" class="back-link">← Voltar para Base de Conhecimento</a>
+        </div>
+        
+        <!-- Admin Content (hidden initially) -->
+        <div id="adminContent" class="admin-content">
+            <div class="login-header">
+                <h1>✏️ Editar Base de Conhecimento</h1>
+            </div>
+            
+            <h2>Instruções da IA</h2>
+            <textarea id="instructionsEditor" placeholder="Cole as instruções aqui..."></textarea>
+            
+            <button onclick="saveInstructions()" class="btn-login btn-save">💾 Salvar Alterações</button>
+            <button onclick="logout()" class="btn-login btn-logout">🚪 Sair</button>
+        </div>
+    </div>
+    
+    <script>
+        // Verificar se já está logado
+        window.onload = function() {
+            if (localStorage.getItem('adminLoggedIn') === 'true') {
+                showAdminPanel();
+            }
+        };
+        
+        function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+            
+            // Autenticação via backend
+            fetch('/api/admin/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Login bem sucedido
+                    localStorage.setItem('adminLoggedIn', 'true');
+                    errorDiv.style.display = 'none';
+                    showAdminPanel();
+                } else {
+                    // Erro
+                    errorDiv.textContent = '❌ Usuário ou senha incorretos!';
+                    errorDiv.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        errorDiv.style.display = 'none';
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Erro na autenticação:', error);
+                errorDiv.textContent = '❌ Erro de conexão. Tente novamente.';
+                errorDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 3000);
+            });
+        }
+        
+        function showAdminPanel() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('adminContent').style.display = 'block';
+            
+            // Carregar instruções (simulado - em produção viria do backend)
+            document.getElementById('instructionsEditor').value = 
+                'Cole aqui as novas instruções da IA...\n\n' +
+                'Este é um editor simulado.\n' +
+                'Em produção, isso se conectaria ao backend para salvar no banco de dados.';
+        }
+        
+        function saveInstructions() {
+            const instructions = document.getElementById('instructionsEditor').value;
+            
+            if (!instructions.trim()) {
+                alert('❌ Instruções não podem estar vazias!');
+                return;
+            }
+            
+            // Simulação de salvamento
+            alert('✅ Instruções salvas com sucesso!\n\n(Nota: Este é um protótipo. Para funcionalidade completa, conectar ao backend)');
+        }
+        
+        function logout() {
+            if (confirm('Deseja realmente sair?')) {
+                localStorage.removeItem('adminLoggedIn');
+                document.getElementById('loginSection').style.display = 'block';
+                document.getElementById('adminContent').style.display = 'none';
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            }
+        }
+    </script>
+</body>
+</html>

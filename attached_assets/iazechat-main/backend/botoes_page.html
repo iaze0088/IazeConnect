@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Botões Interativos - WA Site</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h1 class="text-3xl font-bold mb-2">🎯 Sistema de Botões Interativos</h1>
+            <p class="text-gray-600 mb-8">Configure botões interativos para o WA Site com hierarquia e modos de operação</p>
+
+            <!-- Modo -->
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <button class="mode-btn bg-purple-600 text-white p-4 rounded-lg font-semibold hover:bg-purple-700 transition">
+                    📱 APENAS BOTÕES
+                </button>
+                <button class="mode-btn bg-white border-2 border-gray-300 p-4 rounded-lg font-semibold hover:bg-gray-50 transition">
+                    🤖 APENAS IA
+                </button>
+                <button class="mode-btn bg-white border-2 border-gray-300 p-4 rounded-lg font-semibold hover:bg-gray-50 transition">
+                    ⚡ HÍBRIDO
+                </button>
+            </div>
+
+            <!-- Mensagem -->
+            <div class="mb-8">
+                <label class="block font-semibold mb-2">Mensagem de Boas-Vindas:</label>
+                <textarea class="w-full p-3 border rounded-lg" rows="3">Olá! Como posso ajudar você hoje? Selecione uma opção:</textarea>
+                <button class="mt-2 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">Salvar Mensagem</button>
+            </div>
+
+            <!-- Botões -->
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Botões Configurados:</h2>
+                <button class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold">
+                    ➕ Adicionar Botão
+                </button>
+            </div>
+
+            <!-- Lista -->
+            <div class="space-y-4">
+                <div class="bg-gray-50 border rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-lg">📞 SUPORTE</div>
+                            <div class="text-gray-600">Você será atendido por nossa equipe de suporte em breve.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100">➕</button>
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100">✏️</button>
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100 text-red-600">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 border rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-lg">🎁 TESTE GRÁTIS</div>
+                            <div class="text-gray-600">Ótimo! Vamos configurar seu teste grátis. Por favor, informe:</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100">➕</button>
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100">✏️</button>
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100 text-red-600">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="ml-8 mt-4 space-y-2">
+                        <div class="bg-white border rounded p-3 flex justify-between">
+                            <span>📱 Como funciona?</span>
+                            <button class="text-red-600 hover:underline">🗑️</button>
+                        </div>
+                        <div class="bg-white border rounded p-3 flex justify-between">
+                            <span>✅ Quero o teste!</span>
+                            <button class="text-red-600 hover:underline">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 border rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-lg">💼 SEJA REVENDEDOR</div>
+                            <div class="text-gray-600">Excelente escolha! Nossas condições de revenda são:</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100">➕</button>
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100">✏️</button>
+                            <button class="px-4 py-2 border rounded hover:bg-gray-100 text-red-600">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p class="text-sm text-blue-800">
+                    <strong>💡 Status:</strong> Sistema de botões implementado! Interface funcional para demonstração.
+                    Backend API criado em: <code>/app/backend/vendas_buttons_service.py</code>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

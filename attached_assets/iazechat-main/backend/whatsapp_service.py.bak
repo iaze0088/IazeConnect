@@ -1,0 +1,723 @@
+"""
+Serviço WhatsApp Evolution API
+Gerencia rotação de números, limites e anti-banimento
+"""
+import httpx
+import os
+import asyncio
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Dict
+import logging
+
+logger = logging.getLogger(__name__)
+
+class WhatsAppService:
+    """Serviço para gerenciar WhatsApp Evolution API"""
+    
+    def __init__(self, db):
+        self.db = db
+        self.connections_col = db.whatsapp_connections
+        self.configs_col = db.whatsapp_configs
+        self.messages_col = db.whatsapp_messages
+        # Carregar configurações em runtime para garantir que .env foi carregado
+        self.EVOLUTION_API_URL = os.environ.get('EVOLUTION_API_URL', 'http://45.157.157.69:8080')
+        self.EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', '')
+        logger.info(f"🔧 WhatsAppService inicializado com Evolution API: {self.EVOLUTION_API_URL}")
+    
+    async def configure_webhook_for_instance(self, instance_name: str) -> bool:
+        """Configurar webhook para uma instância existente - Evolution API v2.3.x"""
+        try:
+            backend_url = os.environ.get("REACT_APP_BACKEND_URL", "https://wppconnect-fix.preview.emergentagent.com")
+            webhook_url = f"{backend_url}/api/whatsapp/webhook/evolution"
+            
+            logger.info(f"🔧 Configurando webhook para Evolution API v2.3.x: {instance_name}")
+            logger.info(f"📍 Webhook URL: {webhook_url}")
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                # Formato correto baseado no webhook.schema.ts da Evolution API v2.3.x
+                # Requer AMBOS: "instance" (string) E "webhook" (object)
+                response = await client.post(
+                    f"{self.EVOLUTION_API_URL}/webhook/set/{instance_name}",
+                    json={
+                        "webhook": {
+                            "enabled": True,
+                            "url": webhook_url,
+                            "headers": {},
+                            "webhookByEvents": False,
+                            "webhookBase64": False,
+                            "events": ["CONNECTION_UPDATE", "MESSAGES_UPSERT", "QRCODE_UPDATED"]
+                        }
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "apikey": self.EVOLUTION_API_KEY
+                    }
+                )
+                
+                if response.status_code in [200, 201]:
+                    logger.info(f"✅ Webhook configurado com sucesso (GitHub solution)!")
+                    return True
+                else:
+                    logger.error(f"❌ Erro ao configurar webhook: {response.status_code} - {response.text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ Erro ao configurar webhook: {e}")
+            return False
+    
+    # ==================== GERENCIAMENTO DE CONEXÕES ====================
+    
+    async def create_instance(self, reseller_id: str, instance_name: str) -> Dict:
+        """Criar instância WhatsApp na Evolution API v1.8.7"""
+        try:
+            logger.info(f"🔍 Tentando criar instância: {instance_name} para reseller: {reseller_id}")
+            logger.info(f"🌐 Evolution API URL configurada: {self.EVOLUTION_API_URL}")
+            logger.info(f"🔑 Evolution API Key: {self.EVOLUTION_API_KEY[:20]}...")
+            
+            # VERIFICAÇÃO: Checar se o nome já está em uso na Evolution API
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                check_response = await client.get(
+                    f"{self.EVOLUTION_API_URL}/instance/fetchInstances",
+                    headers={"apikey": self.EVOLUTION_API_KEY}
+                )
+                
+                if check_response.status_code == 200:
+                    existing_instances = check_response.json()
+                    logger.info(f"📋 Instâncias existentes na Evolution API: {len(existing_instances)}")
+                    
+                    for inst in existing_instances:
+                        existing_name = inst.get("instance", {}).get("instanceName")
+                        logger.info(f"   - {existing_name}")
+                        
+                        if existing_name and existing_name.lower() == instance_name.lower():
+                            logger.warning(f"⚠️ Instance {instance_name} already exists (case insensitive match), deleting it first...")
+                            # Tentar deletar a instância existente
+                            try:
+                                await self.delete_instance(existing_name)
+                                import asyncio
+                                await asyncio.sleep(2)  # Aguardar exclusão completa
+                                logger.info(f"✅ Instância existente {existing_name} deletada com sucesso")
+                            except Exception as e:
+                                logger.error(f"❌ Failed to delete existing instance: {e}")
+                                return {
+                                    "success": False,
+                                    "error": f"A instância '{existing_name}' já existe e não pôde ser removida. Use o botão 'Limpar Tudo' primeiro."
+                                }
+            
+            # Criar nova instância COM WEBHOOK
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                logger.info(f"📤 Enviando requisição para criar instância: {instance_name}")
+                
+                # Determinar URL do webhook (backend IAZE)
+                backend_url = os.environ.get("REACT_APP_BACKEND_URL", "https://wppconnect-fix.preview.emergentagent.com")
+                webhook_url = f"{backend_url}/api/whatsapp/webhook/evolution"
+                
+                # Criar payload correto para Evolution API v1.7.4
+                # Campos corrigidos conforme versão instalada:
+                # - "instanceName" (formato v1.7.4)
+                # - "integration" (não "engine")
+                # - "qrcode": True para forçar QR code
+                create_payload = {
+                    "instanceName": instance_name,
+                    "integration": "WHATSAPP-BAILEYS",
+                    "qrcode": True
+                    # Não incluir "number" para gerar QR code ao invés de auto-connect
+                }
+                
+                logger.info(f"🆕 Criando instância {instance_name} com Evolution API v1.7.4 (webhook será configurado depois)")
+                logger.info(f"📋 Payload v1.7.4: {create_payload}")
+                logger.info(f"🌐 URL: {self.EVOLUTION_API_URL}/instance/create")
+                logger.info(f"🔑 API Key (primeiros 20 chars): {self.EVOLUTION_API_KEY[:20]}...")
+                
+                # LOG DETALHADO: Imprimir payload como JSON string
+                import json
+                payload_str = json.dumps(create_payload, indent=2)
+                logger.info(f"📤 Payload JSON completo:\n{payload_str}")
+                
+                response = await client.post(
+                    f"{self.EVOLUTION_API_URL}/instance/create",
+                    json=create_payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "apikey": self.EVOLUTION_API_KEY
+                    }
+                )
+                
+                logger.info(f"📥 Evolution API Status Code: {response.status_code}")
+                logger.info(f"📥 Evolution API Response: {response.text[:500]}")
+                
+                logger.info(f"📥 Evolution API respondeu com status: {response.status_code}")
+                
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    logger.info(f"✅ Evolution API instance created: {instance_name}")
+                    
+                    # GARANTIR WEBHOOK: Configurar novamente após criação
+                    logger.info(f"🔧 Garantindo configuração do webhook...")
+                    
+                    # Aguardar instância estar pronta
+                    import asyncio
+                    await asyncio.sleep(2)
+                    
+                    webhook_configured = await self.configure_webhook_for_instance(instance_name)
+                    
+                    if webhook_configured:
+                        logger.info(f"✅ Webhook GARANTIDO para instância {instance_name}")
+                    else:
+                        logger.warning(f"⚠️ Webhook pode não estar configurado - polling será usado como fallback")
+                    
+                    return {
+                        "success": True,
+                        "instance_name": instance_name,
+                        "data": data,
+                        "webhook_configured": webhook_configured
+                    }
+                else:
+                    error_text = response.text
+                    logger.error(f"❌ Evolution API error: {response.status_code} - {error_text}")
+                    
+                    # Se o erro for "already in use", tentar limpar e recriar
+                    if "already in use" in error_text.lower():
+                        logger.warning(f"🔄 Instance {instance_name} is in use, attempting cleanup...")
+                        await self.delete_instance(instance_name)
+                        import asyncio
+                        await asyncio.sleep(2)
+                        
+                        # Tentar criar novamente com payload v1.x
+                        logger.info(f"🔄 Retry: Tentando criar instância novamente após limpeza...")
+                        retry_response = await client.post(
+                            f"{self.EVOLUTION_API_URL}/instance/create",
+                            json={
+                                "instanceName": instance_name,
+                                "integration": "WHATSAPP-BAILEYS",
+                                "qrcode": True
+                            },
+                            headers={
+                                "Content-Type": "application/json",
+                                "apikey": self.EVOLUTION_API_KEY
+                            }
+                        )
+                        
+                        if retry_response.status_code in [200, 201]:
+                            logger.info(f"✅ Instance created after cleanup: {instance_name}")
+                            return {
+                                "success": True,
+                                "instance_name": instance_name,
+                                "data": retry_response.json()
+                            }
+                        else:
+                            logger.error(f"❌ Retry também falhou: {retry_response.status_code}")
+                    
+                    return {
+                        "success": False,
+                        "error": f"Evolution API error - Status {response.status_code}: {error_text}"
+                    }
+                    
+        except Exception as e:
+            logger.error(f"❌ Exception ao criar instância: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {"success": False, "error": str(e)}
+    
+    async def get_qr_code(self, instance_name: str) -> Optional[str]:
+        """Buscar QR code da Evolution API"""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{self.EVOLUTION_API_URL}/instance/connect/{instance_name}",
+                    headers={"apikey": self.EVOLUTION_API_KEY}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Evolution API pode retornar QR code em diferentes formatos
+                    qr_code = data.get("base64") or data.get("code") or data.get("qrcode")
+                    
+                    if qr_code:
+                        logger.info(f"✅ QR Code obtained for {instance_name}")
+                        return qr_code
+                    else:
+                        logger.warning(f"⚠️ No QR code in response for {instance_name}")
+                        return None
+                else:
+                    logger.error(f"❌ Evolution API QR code error: {response.status_code}")
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"Error getting QR code: {e}")
+            return None
+    
+    async def get_available_connection_with_rotation(self, reseller_id: str) -> Optional[Dict]:
+        """Buscar conexão disponível com rotação inteligente e anti-banimento"""
+        try:
+            # Buscar todas as conexões ativas do reseller ordenadas por rotation_order
+            connections = await self.db.whatsapp_connections.find({
+                "reseller_id": reseller_id,
+                "status": "connected",
+                "is_active_for_rotation": True
+            }).sort("rotation_order", 1).to_list(length=100)
+            
+            if not connections:
+                logger.warning(f"No active connections for reseller {reseller_id}")
+                return None
+            
+            # Resetar contadores diários se necessário
+            for conn in connections:
+                last_reset = conn.get("last_reset")
+                if last_reset:
+                    last_reset_date = datetime.fromisoformat(last_reset).date()
+                    today = datetime.now(timezone.utc).date()
+                    
+                    if last_reset_date < today:
+                        # Resetar contadores
+                        await self.db.whatsapp_connections.update_one(
+                            {"id": conn["id"]},
+                            {
+                                "$set": {
+                                    "sent_today": 0,
+                                    "received_today": 0,
+                                    "transfers_today": 0,
+                                    "last_reset": datetime.now(timezone.utc).isoformat()
+                                }
+                            }
+                        )
+                        conn["sent_today"] = 0
+            
+            # Buscar primeira conexão que não atingiu o limite
+            for conn in connections:
+                sent_today = conn.get("sent_today", 0)
+                max_sent = conn.get("max_sent_daily", 200)
+                
+                if sent_today < max_sent:
+                    return conn
+            
+            # Se todas atingiram limite, retornar a com menor uso
+            connections_sorted = sorted(connections, key=lambda x: x.get("sent_today", 0))
+            return connections_sorted[0] if connections_sorted else None
+            
+        except Exception as e:
+            logger.error(f"Error getting available connection: {e}")
+            return None
+    
+    async def check_connection_status(self, instance_name: str) -> str:
+        """Verificar status da conexão Evolution API"""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{self.EVOLUTION_API_URL}/instance/connectionState/{instance_name}",
+                    headers={"apikey": self.EVOLUTION_API_KEY}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    state = data.get("state", "").lower()
+                    
+                    # Evolution API estados: open, connecting, close
+                    if state == "open":
+                        return "connected"
+                    elif state == "connecting":
+                        return "connecting"
+                    else:
+                        return "disconnected"
+                        
+                return "error"
+                
+        except Exception as e:
+            logger.error(f"Error checking Evolution API status for {instance_name}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return "error"
+    
+    async def send_message(self, instance_name: str, to_number: str, message: str) -> Dict:
+        """Enviar mensagem via Evolution API v2.3"""
+        try:
+            # Limpar formatação do número (remover tudo exceto dígitos)
+            clean_number = ''.join(filter(str.isdigit, to_number))
+            
+            # Adicionar código do país se não tiver
+            if not clean_number.startswith('55'):
+                clean_number = f'55{clean_number}'
+            
+            # Evolution API v2.3 exige formato: 5511999999999@s.whatsapp.net
+            formatted_number = f"{clean_number}@s.whatsapp.net"
+            
+            logger.info(f"📱 Enviando mensagem para: {formatted_number} (original: {to_number})")
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.EVOLUTION_API_URL}/message/sendText/{instance_name}",
+                    json={
+                        "number": formatted_number,
+                        "textMessage": {
+                            "text": message
+                        }
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "apikey": self.EVOLUTION_API_KEY
+                    }
+                )
+                
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    logger.info(f"✅ Message sent via Evolution API: {instance_name}")
+                    return {
+                        "success": True,
+                        "message_id": data.get("key", {}).get("id") or data.get("messageId"),
+                        "instance": instance_name
+                    }
+                else:
+                    logger.error(f"❌ Evolution API send error: {response.status_code} - {response.text}")
+                    return {
+                        "success": False,
+                        "error": f"Evolution API error - Status {response.status_code}: {response.text}"
+                    }
+                    
+        except Exception as e:
+            logger.error(f"Error sending message via Evolution API: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def delete_instance(self, instance_name: str) -> Dict:
+        """Deletar instância da Evolution API com verificação completa"""
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                # Tentar logout primeiro (desconectar WhatsApp)
+                try:
+                    logout_response = await client.delete(
+                        f"{self.EVOLUTION_API_URL}/instance/logout/{instance_name}",
+                        headers={"apikey": self.EVOLUTION_API_KEY}
+                    )
+                    logger.info(f"Logout attempt for {instance_name}: {logout_response.status_code}")
+                except Exception as e:
+                    logger.warning(f"Logout error (ignoring): {e}")
+                
+                # Aguardar um pouco para garantir que o logout foi processado
+                import asyncio
+                await asyncio.sleep(1)
+                
+                # Deletar a instância
+                response = await client.delete(
+                    f"{self.EVOLUTION_API_URL}/instance/delete/{instance_name}",
+                    headers={"apikey": self.EVOLUTION_API_KEY}
+                )
+                
+                if response.status_code in [200, 201, 404]:
+                    logger.info(f"✅ Instance deleted from Evolution API: {instance_name}")
+                    
+                    # Verificar se realmente foi deletado
+                    await asyncio.sleep(1)
+                    try:
+                        check_response = await client.get(
+                            f"{self.EVOLUTION_API_URL}/instance/fetchInstances",
+                            headers={"apikey": self.EVOLUTION_API_KEY}
+                        )
+                        instances = check_response.json()
+                        if any(inst.get("instance", {}).get("instanceName") == instance_name for inst in instances):
+                            logger.warning(f"⚠️ Instance {instance_name} still exists after deletion attempt!")
+                            # Tentar deletar novamente
+                            await client.delete(
+                                f"{self.EVOLUTION_API_URL}/instance/delete/{instance_name}",
+                                headers={"apikey": self.EVOLUTION_API_KEY}
+                            )
+                    except Exception as e:
+                        logger.warning(f"Could not verify deletion: {e}")
+                    
+                    return {"success": True}
+                else:
+                    logger.warning(f"⚠️ Evolution API delete warning: {response.status_code} - {response.text}")
+                    # Mesmo com erro, considerar sucesso para permitir limpeza
+                    return {"success": True}
+                    
+        except Exception as e:
+            logger.error(f"Error deleting Evolution API instance: {e}")
+            # Mesmo com erro, retornar sucesso para permitir limpeza do banco
+            return {"success": True}
+    
+    async def cleanup_all_instances(self, reseller_id: Optional[str] = None) -> Dict:
+        """Limpar TODAS as instâncias do Evolution API (admin) ou de um reseller específico"""
+        try:
+            deleted_count = 0
+            errors = []
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                # Buscar todas as instâncias da Evolution API
+                response = await client.get(
+                    f"{self.EVOLUTION_API_URL}/instance/fetchInstances",
+                    headers={"apikey": self.EVOLUTION_API_KEY}
+                )
+                
+                if response.status_code == 200:
+                    instances = response.json()
+                    
+                    # Se reseller_id fornecido, buscar nomes de instâncias do reseller no banco
+                    if reseller_id:
+                        db_connections = await self.connections_col.find(
+                            {"reseller_id": reseller_id},
+                            {"instance_name": 1}
+                        ).to_list(length=1000)
+                        reseller_instance_names = {conn["instance_name"] for conn in db_connections}
+                    else:
+                        reseller_instance_names = None
+                    
+                    for inst_data in instances:
+                        inst_name = inst_data.get("instance", {}).get("instanceName")
+                        
+                        if not inst_name:
+                            continue
+                        
+                        # Se reseller_id fornecido, apenas deletar instâncias desse reseller
+                        if reseller_instance_names and inst_name not in reseller_instance_names:
+                            continue
+                        
+                        try:
+                            # Tentar logout primeiro
+                            await client.delete(
+                                f"{self.EVOLUTION_API_URL}/instance/logout/{inst_name}",
+                                headers={"apikey": self.EVOLUTION_API_KEY}
+                            )
+                        except:
+                            pass
+                        
+                        # Aguardar um pouco
+                        import asyncio
+                        await asyncio.sleep(0.5)
+                        
+                        # Deletar instância
+                        del_response = await client.delete(
+                            f"{self.EVOLUTION_API_URL}/instance/delete/{inst_name}",
+                            headers={"apikey": self.EVOLUTION_API_KEY}
+                        )
+                        
+                        if del_response.status_code in [200, 201, 404]:
+                            deleted_count += 1
+                            logger.info(f"✅ Deleted instance: {inst_name}")
+                        else:
+                            errors.append(f"{inst_name}: {del_response.status_code}")
+                    
+                    # Deletar também do banco de dados
+                    if reseller_id:
+                        db_result = await self.connections_col.delete_many({"reseller_id": reseller_id})
+                    else:
+                        db_result = await self.connections_col.delete_many({})
+                    
+                    return {
+                        "success": True,
+                        "deleted_from_evolution": deleted_count,
+                        "deleted_from_db": db_result.deleted_count,
+                        "errors": errors
+                    }
+                else:
+                    logger.error(f"Failed to fetch instances: {response.status_code}")
+                    return {"success": False, "error": "Failed to fetch instances"}
+                    
+        except Exception as e:
+            logger.error(f"Error in cleanup_all_instances: {e}")
+            return {"success": False, "error": str(e)}
+    
+    # ==================== ROTAÇÃO E LIMITES ====================
+    
+    async def select_instance_for_receiving(self, reseller_id: str) -> Optional[str]:
+        """Selecionar instância para receber mensagem (com rotação)"""
+        
+        # Buscar todas as conexões ativas da revenda
+        connections = await self.connections_col.find({
+            "reseller_id": reseller_id,
+            "status": "connected",
+            "is_active_for_rotation": True
+        }).sort("rotation_order", 1).to_list(length=100)
+        
+        if not connections:
+            return None
+        
+        # Reset diário de contadores
+        await self._reset_daily_counters(connections)
+        
+        # Encontrar primeira instância com espaço disponível
+        for conn in connections:
+            if conn["received_today"] < conn["max_received_daily"]:
+                return conn["instance_name"]
+        
+        # Se todas atingiram limite, retorna None (rejeitará mensagem)
+        return None
+    
+    async def select_instance_for_sending(self, reseller_id: str) -> Optional[str]:
+        """Selecionar instância para enviar mensagem (com rotação)"""
+        
+        # Buscar config da revenda
+        config = await self.configs_col.find_one({"reseller_id": reseller_id})
+        if not config:
+            config = {"rotation_strategy": "round_robin"}
+        
+        # Buscar todas as conexões ativas
+        connections = await self.connections_col.find({
+            "reseller_id": reseller_id,
+            "status": "connected",
+            "is_active_for_rotation": True
+        }).sort("rotation_order", 1).to_list(length=100)
+        
+        if not connections:
+            return None
+        
+        # Reset diário de contadores
+        await self._reset_daily_counters(connections)
+        
+        # Estratégia: Round Robin
+        if config.get("rotation_strategy") == "round_robin":
+            for conn in connections:
+                if conn["sent_today"] < conn["max_sent_daily"]:
+                    return conn["instance_name"]
+        
+        # Estratégia: Least Used (menos usado)
+        else:
+            available = [c for c in connections if c["sent_today"] < c["max_sent_daily"]]
+            if available:
+                least_used = min(available, key=lambda x: x["sent_today"])
+                return least_used["instance_name"]
+        
+        return None
+    
+    async def increment_received_counter(self, instance_name: str):
+        """Incrementar contador de mensagens recebidas"""
+        await self.connections_col.update_one(
+            {"instance_name": instance_name},
+            {
+                "$inc": {"received_today": 1},
+                "$set": {"last_activity": datetime.now(timezone.utc)}
+            }
+        )
+    
+    async def increment_sent_counter(self, instance_name: str):
+        """Incrementar contador de mensagens enviadas"""
+        await self.connections_col.update_one(
+            {"instance_name": instance_name},
+            {
+                "$inc": {"sent_today": 1},
+                "$set": {"last_activity": datetime.now(timezone.utc)}
+            }
+        )
+    
+    async def _reset_daily_counters(self, connections: List[Dict]):
+        """Resetar contadores diários se necessário"""
+        now = datetime.now(timezone.utc)
+        
+        for conn in connections:
+            last_reset = conn.get("last_reset")
+            
+            # Se last_reset é string ISO, converter para datetime
+            if isinstance(last_reset, str):
+                last_reset = datetime.fromisoformat(last_reset.replace('Z', '+00:00'))
+            
+            # Se passou mais de 24h, resetar
+            if not last_reset or (now - last_reset) > timedelta(hours=24):
+                await self.connections_col.update_one(
+                    {"instance_name": conn["instance_name"]},
+                    {
+                        "$set": {
+                            "received_today": 0,
+                            "sent_today": 0,
+                            "last_reset": now.isoformat()
+                        }
+                    }
+                )
+    
+    # ==================== ESTATÍSTICAS ====================
+    
+    async def get_stats(self, reseller_id: str) -> Dict:
+        """Buscar estatísticas de uso"""
+        
+        connections = await self.connections_col.find({
+            "reseller_id": reseller_id
+        }).to_list(length=100)
+        
+        active_count = sum(1 for c in connections if c["status"] == "connected")
+        total_received = sum(c.get("received_today", 0) for c in connections)
+        total_sent = sum(c.get("sent_today", 0) for c in connections)
+        
+        return {
+            "reseller_id": reseller_id,
+            "total_connections": len(connections),
+            "active_connections": active_count,
+            "total_received_today": total_received,
+            "total_sent_today": total_sent,
+            "connections": [
+                {
+                    "instance_name": c["instance_name"],
+                    "phone_number": c.get("phone_number"),
+                    "status": c["status"],
+                    "received_today": c.get("received_today", 0),
+                    "sent_today": c.get("sent_today", 0),
+                    "max_received_daily": c.get("max_received_daily", 200),
+                    "max_sent_daily": c.get("max_sent_daily", 200),
+                    "rotation_order": c.get("rotation_order", 1)
+                }
+                for c in connections
+            ]
+        }
+    
+    # ==================== WEBHOOK HANDLER ====================
+    
+    async def handle_incoming_message(self, data: Dict) -> Dict:
+        """Processar mensagem recebida do webhook"""
+        try:
+            instance_name = data.get("instance")
+            from_number = data.get("data", {}).get("key", {}).get("remoteJid", "").replace("@s.whatsapp.net", "")
+            message_text = data.get("data", {}).get("message", {}).get("conversation", "")
+            
+            if not message_text:
+                # Tentar extendedTextMessage
+                message_text = data.get("data", {}).get("message", {}).get("extendedTextMessage", {}).get("text", "")
+            
+            # Buscar conexão
+            connection = await self.connections_col.find_one({"instance_name": instance_name})
+            if not connection:
+                return {"success": False, "error": "Instance not found"}
+            
+            # Verificar se atingiu limite
+            if connection["received_today"] >= connection["max_received_daily"]:
+                # Tentar rotacionar para próxima instância
+                next_instance = await self.select_instance_for_receiving(connection["reseller_id"])
+                
+                if next_instance and next_instance != instance_name:
+                    # Enviar mensagem de transferência
+                    config = await self.configs_col.find_one({"reseller_id": connection["reseller_id"]})
+                    transfer_msg = config.get("transfer_message", "⏳ Transferindo para outro atendente...")
+                    
+                    await self.send_message(instance_name, from_number, transfer_msg)
+                    
+                    # Redirecionar para próxima instância (via webhook interno ou criar ticket diretamente)
+                    logger.info(f"Rotated message from {instance_name} to {next_instance}")
+                    instance_name = next_instance
+                else:
+                    # Todas instâncias no limite - enviar mensagem de aviso
+                    await self.send_message(
+                        instance_name, 
+                        from_number, 
+                        "⚠️ No momento estamos com alto volume de atendimentos. Por favor, aguarde."
+                    )
+                    return {"success": False, "error": "All instances at capacity"}
+            
+            # Incrementar contador
+            await self.increment_received_counter(instance_name)
+            
+            # Registrar mensagem no banco
+            await self.messages_col.insert_one({
+                "instance_name": instance_name,
+                "reseller_id": connection["reseller_id"],
+                "from_number": from_number,
+                "message": message_text,
+                "direction": "received",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            
+            return {
+                "success": True,
+                "instance_name": instance_name,
+                "from_number": from_number,
+                "message": message_text,
+                "reseller_id": connection["reseller_id"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error handling incoming message: {e}")
+            return {"success": False, "error": str(e)}

@@ -1,0 +1,383 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import api from '@/lib/api';
+import { toast } from 'sonner';
+
+const DepartmentsManager = () => {
+  const [departments, setDepartments] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [humanAgents, setHumanAgents] = useState([]); // Atendentes humanos
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingDept, setEditingDept] = useState(null);
+  const [originFilter, setOriginFilter] = useState('wa_suporte'); // Filtro de origem
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    ai_agent_id: '',
+    is_default: false,
+    timeout_seconds: 120,
+    agent_ids: [], // IDs dos atendentes que podem ver este departamento
+    origin: 'wa_suporte' // Origem do departamento
+  });
+
+  useEffect(() => {
+    loadDepartments();
+    loadAgents();
+    loadHumanAgents();
+  }, []);
+
+  const loadDepartments = async () => {
+    try {
+      const { data } = await api.get('/ai/departments');
+      setDepartments(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      setDepartments([]);
+    }
+  };
+
+  const loadAgents = async () => {
+    try {
+      const { data } = await api.get('/ai/agents');
+      const agentsList = Array.isArray(data) ? data : [];
+      setAgents(agentsList.filter(a => a.is_active));
+    } catch (error) {
+      console.error('Error loading agents:', error);
+      setAgents([]);
+    }
+  };
+
+  const loadHumanAgents = async () => {
+    try {
+      const { data } = await api.get('/agents');
+      setHumanAgents(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error loading human agents:', error);
+      setHumanAgents([]);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      toast.error('Digite um nome para o departamento');
+      return;
+    }
+
+    try {
+      // Garantir que origin está definido com valor atual do filtro
+      const dataToSave = {
+        ...formData,
+        origin: originFilter // FORÇAR origem selecionada SEMPRE
+      };
+      
+      console.log('🔍 DEBUG: Salvando departamento:', {
+        nome: dataToSave.name,
+        origin: dataToSave.origin,
+        originFilter: originFilter
+      });
+      
+      if (editingDept) {
+        await api.put(`/ai/departments/${editingDept.id}`, dataToSave);
+        toast.success('Departamento atualizado!');
+      } else {
+        const response = await api.post('/ai/departments', dataToSave);
+        console.log('✅ Resposta do servidor:', response.data);
+        toast.success(`✅ Departamento "${dataToSave.name}" criado em ${originFilter === 'wa_suporte' ? 'WA SUPORTE' : originFilter === 'whatsapp_starter' ? 'WHATSAPP STARTER' : 'I.A'}!`);
+      }
+      
+      setShowDialog(false);
+      setEditingDept(null);
+      setFormData({
+        name: '',
+        description: '',
+        ai_agent_id: '',
+        is_default: false,
+        timeout_seconds: 120,
+        agent_ids: [],
+        origin: originFilter // Manter origem
+      });
+      
+      // Recarregar departamentos
+      await loadDepartments();
+    } catch (error) {
+      toast.error('Erro ao salvar departamento');
+    }
+  };
+
+  const handleEdit = (dept) => {
+    setEditingDept(dept);
+    setFormData({
+      name: dept.name,
+      description: dept.description || '',
+      ai_agent_id: dept.ai_agent_id || '',
+      is_default: dept.is_default || false,
+      timeout_seconds: dept.timeout_seconds || 120,
+      agent_ids: Array.isArray(dept.agent_ids) ? dept.agent_ids : [],
+      origin: dept.origin || originFilter // ✅ INCLUIR ORIGIN
+    });
+    setShowDialog(true);
+  };
+
+  const handleDelete = async (deptId) => {
+    if (!confirm('Tem certeza que deseja deletar este departamento?')) return;
+
+    try {
+      await api.delete(`/ai/departments/${deptId}`);
+      toast.success('Departamento deletado!');
+      loadDepartments();
+    } catch (error) {
+      toast.error('Erro ao deletar departamento');
+    }
+  };
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">📂 Departamentos por Origem</h2>
+        <p className="text-slate-600 mb-4">Crie departamentos específicos para cada canal de atendimento</p>
+      </div>
+
+      {/* ABAS DE ORIGEM */}
+      <div className="flex gap-2 mb-6">
+        <Button
+          variant={originFilter === 'wa_suporte' ? 'default' : 'outline'}
+          onClick={() => setOriginFilter('wa_suporte')}
+          className={`flex-1 ${
+            originFilter === 'wa_suporte' 
+              ? 'bg-red-600 hover:bg-red-700 text-white' 
+              : 'border-red-300 text-red-700 hover:bg-red-50'
+          }`}
+        >
+          📱 WA SUPORTE
+        </Button>
+        <Button
+          variant={originFilter === 'whatsapp_starter' ? 'default' : 'outline'}
+          onClick={() => setOriginFilter('whatsapp_starter')}
+          className={`flex-1 ${
+            originFilter === 'whatsapp_starter' 
+              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : 'border-green-300 text-green-700 hover:bg-green-50'
+          }`}
+        >
+          💬 WHATSAPP STARTER
+        </Button>
+        <Button
+          variant={originFilter === 'ia' ? 'default' : 'outline'}
+          onClick={() => setOriginFilter('ia')}
+          className={`flex-1 ${
+            originFilter === 'ia' 
+              ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+              : 'border-purple-300 text-purple-700 hover:bg-purple-50'
+          }`}
+        >
+          🤖 I.A
+        </Button>
+      </div>
+
+      {/* Botão Criar Departamento */}
+      <div className="mb-6">
+        <Button 
+          onClick={() => {
+            setEditingDept(null);
+            setFormData({
+              name: '',
+              description: '',
+              ai_agent_id: '',
+              is_default: false,
+              timeout_seconds: 120,
+              agent_ids: [],
+              origin: originFilter // Usar origem selecionada
+            });
+            setShowDialog(true);
+          }}
+          className="bg-indigo-600 hover:bg-indigo-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Novo Departamento para {originFilter === 'wa_suporte' ? 'WA SUPORTE' : originFilter === 'whatsapp_starter' ? 'WHATSAPP STARTER' : 'I.A'}
+        </Button>
+      </div>
+
+      {/* Lista de Departamentos - Filtrados por origem */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {(departments || [])
+          .filter(dept => dept.origin === originFilter) // Filtrar por origem
+          .map(dept => {
+          const linkedAgent = agents.find(a => a.id === dept.ai_agent_id);
+          
+          return (
+            <Card key={dept.id} className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold text-slate-900">{dept.name}</h3>
+                  {dept.is_default && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded mt-1 inline-block">
+                      Padrão
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleEdit(dept)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDelete(dept.id)}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                </div>
+              </div>
+              
+              <p className="text-sm text-slate-600 mb-3">{dept.description || 'Sem descrição'}</p>
+              
+              <div className="space-y-2 text-xs text-slate-500">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3" />
+                  <span>Timeout: {dept.timeout_seconds}s</span>
+                </div>
+                {linkedAgent && (
+                  <div className="flex items-center gap-2 text-indigo-600">
+                    <span>🤖</span>
+                    <span>{linkedAgent.name}</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Dialog: Criar/Editar Departamento */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingDept ? 'Editar' : 'Criar'} Departamento</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Nome</label>
+              <Input
+                placeholder="Ex: Suporte, Vendas, Teste Grátis"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Descrição</label>
+              <Textarea
+                placeholder="Descreva este departamento"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Agente IA vinculado</label>
+              <select
+                value={formData.ai_agent_id}
+                onChange={(e) => setFormData({ ...formData, ai_agent_id: e.target.value })}
+                className="w-full border rounded-lg p-2"
+              >
+                <option value="">Nenhum</option>
+                {(agents || []).map(agent => (
+                  <option key={agent.id} value={agent.id}>{agent.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Timeout (segundos)</label>
+              <Input
+                type="number"
+                placeholder="120"
+                value={formData.timeout_seconds}
+                onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) })}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Tempo para redirecionar automaticamente para este departamento se o cliente não responder
+              </p>
+            </div>
+
+            {/* Seleção de Atendentes */}
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <label className="text-sm font-semibold text-purple-900 mb-2 block">
+                👥 Atendentes com acesso a este departamento
+              </label>
+              <p className="text-xs text-purple-700 mb-3">
+                Selecione quais atendentes podem visualizar e responder tickets deste departamento. Se não selecionar nenhum, todos os atendentes terão acesso.
+              </p>
+              {humanAgents.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {humanAgents.map(agent => (
+                    <label key={agent.id} className="flex items-center gap-2 p-2 bg-white rounded border hover:bg-purple-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={(formData.agent_ids || []).includes(agent.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({
+                              ...formData,
+                              agent_ids: [...(formData.agent_ids || []), agent.id]
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              agent_ids: (formData.agent_ids || []).filter(id => id !== agent.id)
+                            });
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-medium">{agent.name}</span>
+                      <span className="text-xs text-slate-500">({agent.login})</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 italic">Nenhum atendente cadastrado ainda</p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_default}
+                onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <label className="text-sm">
+                Marcar como departamento padrão (recebe tickets após timeout)
+              </label>
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" onClick={() => setShowDialog(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} className="flex-1 bg-indigo-600 hover:bg-indigo-700">
+                {editingDept ? 'Atualizar' : 'Criar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default DepartmentsManager;

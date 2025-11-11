@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: iaze_mongodb
+    restart: always
+    ports:
+      - "127.0.0.1:27017:27017"  # Apenas localhost
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb_backup:/docker-entrypoint-initdb.d
+    environment:
+      MONGO_INITDB_DATABASE: support_chat
+    networks:
+      - iaze_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: iaze_backend
+    restart: always
+    ports:
+      - "127.0.0.1:8001:8001"  # Apenas localhost
+    depends_on:
+      - mongodb
+    environment:
+      MONGO_URL: mongodb://mongodb:27017
+      DB_NAME: support_chat
+      JWT_SECRET: ${JWT_SECRET}
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+    volumes:
+      - backend_uploads:/app/uploads
+      - ./backend:/app
+    networks:
+      - iaze_network
+    command: uvicorn server:app --host 0.0.0.0 --port 8001
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: iaze_frontend
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"  # Apenas localhost
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_BACKEND_URL: https://suporte.help
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - iaze_network
+
+  # NÃO usar container nginx - usar nginx do sistema (compartilhado com X-UI)
+
+volumes:
+  mongodb_data:
+  backend_uploads:
+
+networks:
+  iaze_network:
+    driver: bridge

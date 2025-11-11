@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#25d366">
+    <title>WA Suporte - CyberTV</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/wa-suporte-manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WA Suporte">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto 20px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #111;
+        }
+        
+        p {
+            color: #667781;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .credentials {
+            background: #f0fdf4;
+            border: 2px solid #25d366;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .credential-item {
+            margin-bottom: 16px;
+        }
+        
+        .credential-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .credential-item strong {
+            display: block;
+            font-size: 12px;
+            color: #667781;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .credential-item span {
+            display: block;
+            font-size: 24px;
+            color: #111;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: #25d366;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            margin-bottom: 12px;
+        }
+        
+        .btn:hover {
+            background: #128c7e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #667781;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #667781;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📱</div>
+        <h1>WA Suporte</h1>
+        <p>Bem-vindo ao aplicativo de suporte da CyberTV</p>
+        
+        <div id="credentials-section" style="display:none;">
+            <div class="credentials">
+                <div class="credential-item">
+                    <strong>👤 Usuário IPTV</strong>
+                    <span id="user-display">-</span>
+                </div>
+                <div class="credential-item">
+                    <strong>🔐 Senha IPTV</strong>
+                    <span id="pass-display">-</span>
+                </div>
+            </div>
+            
+            <div class="credentials">
+                <div class="credential-item">
+                    <strong>📞 WhatsApp</strong>
+                    <span id="whatsapp-display">-</span>
+                </div>
+                <div class="credential-item">
+                    <strong>🔢 PIN</strong>
+                    <span id="pin-display">-</span>
+                </div>
+            </div>
+            
+            <a href="https://suporte.help" class="btn">
+                🎬 ACESSAR PLATAFORMA
+            </a>
+            
+            <button onclick="clearData()" class="btn btn-secondary">
+                🗑️ Limpar Dados
+            </button>
+        </div>
+        
+        <div id="no-credentials" style="display:none;">
+            <p style="color: #f59e0b; font-weight: 600;">⚠️ Nenhuma credencial salva</p>
+            <a href="https://suporte.help/vendas" class="btn">
+                🚀 SOLICITAR TESTE
+            </a>
+        </div>
+        
+        <div class="info-box">
+            💡 <strong>Dica:</strong> Guarde suas credenciais em local seguro. Você pode usar este app offline após a instalação!
+        </div>
+    </div>
+
+    <script>
+        // Carregar credenciais
+        function loadCredentials() {
+            const user = localStorage.getItem('wa_suporte_user');
+            const pass = localStorage.getItem('wa_suporte_pass');
+            const whatsapp = localStorage.getItem('wa_suporte_whatsapp');
+            const pin = localStorage.getItem('wa_suporte_pin');
+            
+            if (user && pass) {
+                document.getElementById('user-display').textContent = user;
+                document.getElementById('pass-display').textContent = pass;
+                document.getElementById('whatsapp-display').textContent = whatsapp || '-';
+                document.getElementById('pin-display').textContent = pin || '-';
+                document.getElementById('credentials-section').style.display = 'block';
+                document.getElementById('no-credentials').style.display = 'none';
+            } else {
+                document.getElementById('credentials-section').style.display = 'none';
+                document.getElementById('no-credentials').style.display = 'block';
+            }
+        }
+        
+        function clearData() {
+            if (confirm('Deseja realmente limpar todos os dados salvos?')) {
+                localStorage.clear();
+                loadCredentials();
+                alert('Dados limpos com sucesso!');
+            }
+        }
+        
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/wa-suporte-sw.js')
+                .then(reg => console.log('✅ Service Worker registrado'))
+                .catch(err => console.log('❌ Erro ao registrar SW:', err));
+        }
+        
+        // Carregar ao iniciar
+        loadCredentials();
+    </script>
+</body>
+</html>

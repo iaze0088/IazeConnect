@@ -1,0 +1,331 @@
+"""
+Serviço WhatsApp WPPConnect-Server
+Gerencia sessões, QR codes e mensagens via WPPConnect
+"""
+import httpx
+import os
+import asyncio
+from datetime import datetime, timezone
+from typing import Optional, Dict
+import logging
+
+logger = logging.getLogger(__name__)
+
+class WhatsAppServiceWPPConnect:
+    """Serviço para gerenciar WhatsApp WPPConnect-Server"""
+    
+    def __init__(self, db):
+        self.db = db
+        self.connections_col = db.whatsapp_connections
+        self.configs_col = db.whatsapp_configs
+        self.messages_col = db.whatsapp_messages
+        # WPPConnect Server configuration
+        self.WPPCONNECT_URL = os.environ.get('WPPCONNECT_URL', 'http://151.243.218.223:21465')
+        self.WPPCONNECT_SECRET_KEY = os.environ.get('WPPCONNECT_SECRET_KEY', 'iaze-wppconnect-2025-secure-key')
+        logger.info(f"🔧 WhatsAppServiceWPPConnect inicializado com WPPConnect: {self.WPPCONNECT_URL}")
+    
+    # ==================== GERENCIAMENTO DE SESSÕES ====================
+    
+    async def generate_token(self, session_name: str) -> Optional[str]:
+        """Gerar token de autenticação para uma sessão"""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{self.WPPCONNECT_URL}/api/{session_name}/{self.WPPCONNECT_SECRET_KEY}/generate-token"
+                )
+                
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    # Converter / para _ e + para - (formato WPPConnect)
+                    token = data.get("token", "").replace("/", "_").replace("+", "-")
+                    logger.info(f"✅ Token generated for {session_name}")
+                    return token
+                else:
+                    logger.error(f"❌ Token generation failed: {response.status_code}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error generating token: {e}")
+            return None
+    
+    async def create_session(self, reseller_id: str, session_name: str) -> Dict:
+        """Criar sessão WhatsApp no WPPConnect-Server"""
+        try:
+            logger.info(f"🔍 Criando sessão WPPConnect: {session_name} para reseller: {reseller_id}")
+            logger.info(f"🌐 WPPConnect URL: {self.WPPCONNECT_URL}")
+            
+            # PASSO 1: Gerar token para a sessão
+            token = await self.generate_token(session_name)
+            if not token:
+                return {"success": False, "error": "Failed to generate token"}
+            
+            # Backend URL para webhook
+            backend_url = os.environ.get("REACT_APP_BACKEND_URL", "https://suporte.help")
+            webhook_url = f"{backend_url}/api/whatsapp/webhook/wppconnect"
+            
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                # WPPConnect endpoint: POST /api/{session}:{token}/start-session
+                # waitQrCode: false para não bloquear (evita timeout e CLOSED)
+                response = await client.post(
+                    f"{self.WPPCONNECT_URL}/api/{session_name}:{token}/start-session",
+                    json={
+                        "webhook": webhook_url,
+                        "waitQrCode": False  # NÃO bloquear - faremos polling depois
+                    },
+                    headers={
+                        "Content-Type": "application/json"
+                    }
+                )
+                
+                logger.info(f"📥 WPPConnect Status Code: {response.status_code}")
+                logger.info(f"📥 WPPConnect Response: {response.text[:500]}")
+                
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    logger.info(f"✅ WPPConnect session created: {session_name}")
+                    
+                    # Aguardar 3 segundos para sessão inicializar
+                    await asyncio.sleep(3)
+                    
+                    # Fazer polling para obter QR code (até 10 tentativas = 30s)
+                    qr_code = None
+                    for attempt in range(10):
+                        qr_code = await self.get_qr_code(session_name, token)
+                        if qr_code:
+                            logger.info(f"✅ QR Code obtido na tentativa {attempt + 1}")
+                            break
+                        await asyncio.sleep(3)
+                    
+                    if not qr_code:
+                        logger.warning(f"⚠️ QR Code não disponível após 30s")
+                    
+                    return {
+                        "success": True,
+                        "session_name": session_name,
+                        "token": token,
+                        "data": data,
+                        "qr_code": qr_code
+                    }
+                else:
+                    error_text = response.text
+                    logger.error(f"❌ WPPConnect error: {response.status_code} - {error_text}")
+                    return {
+                        "success": False,
+                        "error": f"WPPConnect error - Status {response.status_code}: {error_text}"
+                    }
+                    
+        except Exception as e:
+            logger.error(f"❌ Exception ao criar sessão: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {"success": False, "error": str(e)}
+    
+    async def get_qr_code(self, session_name: str, token: str) -> Optional[str]:
+        """Buscar QR code do WPPConnect"""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # WPPConnect endpoint: GET /api/{session}:{token}/status-session
+                response = await client.get(
+                    f"{self.WPPCONNECT_URL}/api/{session_name}:{token}/status-session"
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # WPPConnect retorna QR code em diferentes formatos
+                    qr_code = data.get("qrcode") or data.get("base64") or data.get("code")
+                    
+                    if qr_code:
+                        logger.info(f"✅ QR Code obtained for {session_name}")
+                        return qr_code
+                    else:
+                        logger.warning(f"⚠️ No QR code in response for {session_name}")
+                        return None
+                else:
+                    logger.error(f"❌ WPPConnect QR code error: {response.status_code}")
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"Error getting QR code: {e}")
+            return None
+    
+    async def check_session_status(self, session_name: str, token: str) -> str:
+        """Verificar status da sessão WPPConnect"""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # WPPConnect endpoint: GET /api/{session}:{token}/status-session
+                response = await client.get(
+                    f"{self.WPPCONNECT_URL}/api/{session_name}:{token}/status-session"
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    state = data.get("status", "").upper()
+                    
+                    logger.info(f"📊 WPPConnect status para {session_name}: {state}")
+                    
+                    # WPPConnect estados: CONNECTED, QRCODE, DISCONNECTED, CLOSED, etc
+                    if state == "CONNECTED":
+                        return "connected"
+                    elif state == "QRCODE":
+                        return "connecting"
+                    elif state == "INITIALIZING":
+                        return "connecting"
+                    elif state in ["DISCONNECTED", "CLOSE", "CLOSED"]:
+                        # IMPORTANTE: Não mudar para disconnected se já estava conectado
+                        # WPPConnect às vezes reporta CLOSED mesmo quando funciona
+                        logger.warning(f"⚠️ WPPConnect reportou CLOSED para {session_name}")
+                        return "connecting"  # Manter como connecting ao invés de desconectar
+                    else:
+                        return "connecting"
+                        
+                return "error"
+                
+        except Exception as e:
+            logger.error(f"Error checking WPPConnect status for {session_name}: {e}")
+            return "error"
+    
+    async def send_message(self, session_name: str, to_number: str, message: str) -> Dict:
+        """Enviar mensagem via WPPConnect"""
+        try:
+            # Limpar formatação do número
+            clean_number = ''.join(filter(str.isdigit, to_number))
+            
+            # Adicionar código do país se não tiver
+            if not clean_number.startswith('55'):
+                clean_number = f'55{clean_number}'
+            
+            logger.info(f"📱 Enviando mensagem WPPConnect para: {clean_number}")
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                # WPPConnect endpoint: POST /api/:session/send-message
+                response = await client.post(
+                    f"{self.WPPCONNECT_URL}/api/{session_name}/send-message",
+                    json={
+                        "phone": clean_number,
+                        "message": message,
+                        "isGroup": False
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.WPPCONNECT_SECRET_KEY}"
+                    }
+                )
+                
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    logger.info(f"✅ Message sent via WPPConnect: {session_name}")
+                    return {
+                        "success": True,
+                        "message_id": data.get("id") or data.get("messageId"),
+                        "session": session_name
+                    }
+                else:
+                    logger.error(f"❌ WPPConnect send error: {response.status_code} - {response.text}")
+                    return {
+                        "success": False,
+                        "error": f"WPPConnect error - Status {response.status_code}: {response.text}"
+                    }
+                    
+        except Exception as e:
+            logger.error(f"Error sending message via WPPConnect: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def delete_session(self, session_name: str) -> Dict:
+        """Deletar sessão do WPPConnect"""
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                # WPPConnect endpoint: POST /api/:session/close-session
+                response = await client.post(
+                    f"{self.WPPCONNECT_URL}/api/{session_name}/close-session",
+                    headers={"Authorization": f"Bearer {self.WPPCONNECT_SECRET_KEY}"}
+                )
+                
+                if response.status_code in [200, 201, 404]:
+                    logger.info(f"✅ Session deleted from WPPConnect: {session_name}")
+                    return {"success": True}
+                else:
+                    logger.warning(f"⚠️ WPPConnect delete warning: {response.status_code}")
+                    return {"success": True}  # Considerar sucesso mesmo com warning
+                    
+        except Exception as e:
+            logger.error(f"Error deleting WPPConnect session: {e}")
+            return {"success": True}  # Retornar sucesso para permitir limpeza do banco
+    
+    async def cleanup_all_sessions(self, reseller_id: Optional[str] = None) -> Dict:
+        """Limpar TODAS as sessões do WPPConnect"""
+        try:
+            deleted_count = 0
+            errors = []
+            
+            # Se reseller_id fornecido, buscar nomes de sessões do reseller no banco
+            if reseller_id:
+                db_connections = await self.connections_col.find(
+                    {"reseller_id": reseller_id},
+                    {"instance_name": 1}
+                ).to_list(length=1000)
+                session_names = [conn["instance_name"] for conn in db_connections]
+            else:
+                # Admin: deletar TODAS as sessões do banco
+                db_connections = await self.connections_col.find({}).to_list(length=1000)
+                session_names = [conn["instance_name"] for conn in db_connections]
+            
+            # Deletar cada sessão
+            for session_name in session_names:
+                result = await self.delete_session(session_name)
+                if result["success"]:
+                    deleted_count += 1
+                else:
+                    errors.append(f"{session_name}: error")
+            
+            # Deletar também do banco de dados
+            if reseller_id:
+                db_result = await self.connections_col.delete_many({"reseller_id": reseller_id})
+            else:
+                db_result = await self.connections_col.delete_many({})
+            
+            return {
+                "success": True,
+                "deleted_from_wppconnect": deleted_count,
+                "deleted_from_db": db_result.deleted_count,
+                "errors": errors
+            }
+                    
+        except Exception as e:
+            logger.error(f"Error in cleanup_all_sessions: {e}")
+            return {"success": False, "error": str(e)}
+    
+    # ==================== WEBHOOK HANDLER ====================
+    
+    async def handle_incoming_message(self, data: Dict) -> Dict:
+        """Processar mensagem recebida do webhook WPPConnect"""
+        try:
+            session_name = data.get("session")
+            from_number = data.get("from", "").replace("@c.us", "").replace("@s.whatsapp.net", "")
+            message_text = data.get("body", "")
+            
+            # Buscar conexão
+            connection = await self.connections_col.find_one({"instance_name": session_name})
+            if not connection:
+                return {"success": False, "error": "Session not found"}
+            
+            # Registrar mensagem no banco
+            await self.messages_col.insert_one({
+                "instance_name": session_name,
+                "reseller_id": connection["reseller_id"],
+                "from_number": from_number,
+                "message": message_text,
+                "direction": "received",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            
+            return {
+                "success": True,
+                "session_name": session_name,
+                "from_number": from_number,
+                "message": message_text,
+                "reseller_id": connection["reseller_id"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error handling incoming message: {e}")
+            return {"success": False, "error": str(e)}

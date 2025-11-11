@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Conexão - IAZE</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Teste de Conexão IAZE</h1>
+    
+    <div class="test-box">
+        <h2>Informações do Ambiente</h2>
+        <div id="env-info" class="result info"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Teste de Login Admin</h2>
+        <button onclick="testAdminLogin()">Testar Login Admin</button>
+        <div id="admin-result" class="result"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Teste de Login Atendente</h2>
+        <button onclick="testAgentLogin('biancaatt')">Testar biancaatt</button>
+        <button onclick="testAgentLogin('jessicaatt')">Testar jessicaatt</button>
+        <button onclick="testAgentLogin('andressaatt')">Testar andressaatt</button>
+        <button onclick="testAgentLogin('leticiaatt')">Testar leticiaatt</button>
+        <div id="agent-result" class="result"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Teste de Login Revendedor</h2>
+        <button onclick="testResellerLogin()">Testar fabioro</button>
+        <div id="reseller-result" class="result"></div>
+    </div>
+
+    <script>
+        // Mostrar informações do ambiente
+        window.onload = function() {
+            const envInfo = document.getElementById('env-info');
+            envInfo.textContent = 
+                `URL Atual: ${window.location.href}\n` +
+                `Protocolo: ${window.location.protocol}\n` +
+                `Host: ${window.location.host}\n` +
+                `Hostname: ${window.location.hostname}\n` +
+                `Port: ${window.location.port}\n` +
+                `Backend URL (detectado): ${window.location.protocol}//${window.location.hostname}`;
+        };
+
+        async function testAdminLogin() {
+            const resultDiv = document.getElementById('admin-result');
+            resultDiv.textContent = 'Testando...';
+            resultDiv.className = 'result info';
+
+            const backendUrl = `${window.location.protocol}//${window.location.hostname}`;
+            
+            try {
+                const response = await fetch(`${backendUrl}/api/auth/admin/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@admin.com',
+                        password: '102030@ab'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = 
+                        `✅ LOGIN ADMIN FUNCIONANDO!\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Token recebido: ${data.token ? 'SIM' : 'NÃO'}\n` +
+                        `User Type: ${data.user_type}\n` +
+                        `User Data: ${JSON.stringify(data.user_data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = 
+                        `❌ ERRO NO LOGIN\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Resposta: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 
+                    `❌ ERRO DE CONEXÃO\n\n` +
+                    `Erro: ${error.message}\n` +
+                    `Backend URL: ${backendUrl}/api/auth/admin/login`;
+            }
+        }
+
+        async function testAgentLogin(username) {
+            const resultDiv = document.getElementById('agent-result');
+            resultDiv.textContent = `Testando ${username}...`;
+            resultDiv.className = 'result info';
+
+            const backendUrl = `${window.location.protocol}//${window.location.hostname}`;
+            
+            try {
+                const response = await fetch(`${backendUrl}/api/auth/agent/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        login: username,
+                        password: 'ab181818ab'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = 
+                        `✅ LOGIN ${username.toUpperCase()} FUNCIONANDO!\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Token recebido: ${data.token ? 'SIM' : 'NÃO'}\n` +
+                        `User Type: ${data.user_type}\n` +
+                        `Agent ID: ${data.user_data?.id}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = 
+                        `❌ ERRO NO LOGIN ${username}\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Resposta: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 
+                    `❌ ERRO DE CONEXÃO\n\n` +
+                    `Erro: ${error.message}\n` +
+                    `Backend URL: ${backendUrl}/api/auth/agent/login`;
+            }
+        }
+
+        async function testResellerLogin() {
+            const resultDiv = document.getElementById('reseller-result');
+            resultDiv.textContent = 'Testando fabioro...';
+            resultDiv.className = 'result info';
+
+            const backendUrl = `${window.location.protocol}//${window.location.hostname}`;
+            
+            try {
+                const response = await fetch(`${backendUrl}/api/resellers/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'fabioro@example.com',
+                        password: '102030a'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = 
+                        `✅ LOGIN FABIORO FUNCIONANDO!\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Token recebido: ${data.token ? 'SIM' : 'NÃO'}\n` +
+                        `User Type: ${data.user_type}\n` +
+                        `Reseller ID: ${data.user_data?.reseller_id}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = 
+                        `❌ ERRO NO LOGIN FABIORO\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Resposta: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 
+                    `❌ ERRO DE CONEXÃO\n\n` +
+                    `Erro: ${error.message}\n` +
+                    `Backend URL: ${backendUrl}/api/resellers/login`;
+            }
+        }
+    </script>
+</body>
+</html>

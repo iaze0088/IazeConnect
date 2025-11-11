@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"session_id":{"$numberInt":"1"}},"name":"session_id_1"},{"v":{"$numberInt":"2"},"key":{"timestamp":{"$numberInt":"-1"}},"name":"timestamp_-1"}],"uuid":"a514d7bc9ad0410997c2c69b554a8e6c","collectionName":"vendas_messages","type":"collection"}

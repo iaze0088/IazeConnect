@@ -1,0 +1,198 @@
+# ============================================================================
+# COMANDO RÁPIDO PARA INSTALAR EVOLUTION API V2.1.1 NO SERVIDOR IAZE
+# ============================================================================
+
+# 1. CONECTE NO SERVIDOR VIA SSH:
+ssh root@151.243.218.223
+# Senha: 102030ab
+
+# 2. COLE E EXECUTE ESTE COMANDO (TUDO DE UMA VEZ):
+
+curl -fsSL https://pastebin.com/raw/YOUR_PASTE_ID -o /tmp/install_evolution.sh && chmod +x /tmp/install_evolution.sh && /tmp/install_evolution.sh
+
+# ============================================================================
+# SE O COMANDO ACIMA NÃO FUNCIONAR, USE ESTE MÉTODO MANUAL:
+# ============================================================================
+
+# 1. Conecte no servidor
+ssh root@151.243.218.223
+
+# 2. Crie o arquivo de instalação
+cat > /tmp/install_evolution.sh << 'EOF'
+#!/bin/bash
+set -e
+echo "🚀 Instalando Evolution API V2.1.1..."
+
+# Instalar Docker se necessário
+if ! command -v docker &> /dev/null; then
+    curl -fsSL https://get.docker.com | sh
+fi
+
+# Instalar Docker Compose se necessário
+if ! command -v docker-compose &> /dev/null; then
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+fi
+
+# Criar diretório
+mkdir -p /opt/evolution-api
+cd /opt/evolution-api
+
+# Criar docker-compose.yml
+cat > docker-compose.yml << 'COMPOSE'
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: evolution_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: iaze-postgres-2025
+      POSTGRES_DB: evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - evolution_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: evolution_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - evolution_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  evolution-api:
+    image: atendai/evolution-api:v2.1.1
+    container_name: evolution_api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_TYPE=http
+      - SERVER_PORT=8080
+      - CORS_ORIGIN=*
+      - CORS_METHODS=GET,POST,PUT,DELETE
+      - CORS_CREDENTIALS=true
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=iaze-evolution-2025-secure-key
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:iaze-postgres-2025@postgres:5432/evolution?schema=public
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_REDIS_SAVE_INSTANCES=true
+      - CACHE_LOCAL_ENABLED=false
+      - QRCODE_LIMIT=30
+      - QRCODE_COLOR=#198754
+      - WEBSOCKET_ENABLED=true
+      - WEBSOCKET_GLOBAL_EVENTS=false
+      - CONFIG_SESSION_PHONE_CLIENT=Evolution API
+      - CONFIG_SESSION_PHONE_NAME=Chrome
+      - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS
+      - LOG_COLOR=true
+      - LOG_BAILEYS=error
+      - DEL_INSTANCE=false
+      - DEL_TEMP_INSTANCES=true
+      - WEBHOOK_GLOBAL_ENABLED=false
+      - RABBITMQ_ENABLED=false
+      - CHATWOOT_MESSAGE_READ=false
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    networks:
+      - evolution_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_instances:
+  evolution_store:
+
+networks:
+  evolution_network:
+    driver: bridge
+COMPOSE
+
+# Iniciar serviços
+echo "🚀 Iniciando serviços..."
+docker-compose down -v 2>/dev/null || true
+docker-compose pull
+docker-compose up -d
+
+# Aguardar
+echo "⏳ Aguardando serviços iniciarem (60 segundos)..."
+sleep 60
+
+# Testar
+echo "🧪 Testando Evolution API..."
+curl -s http://localhost:8080/ | python3 -m json.tool || echo "API está iniciando..."
+
+echo "✅ Instalação concluída!"
+echo ""
+echo "📋 Informações:"
+echo "   URL: http://localhost:8080"
+echo "   API Key: iaze-evolution-2025-secure-key"
+echo ""
+echo "🧪 Testar:"
+echo "   curl http://localhost:8080/"
+echo ""
+echo "📊 Ver status:"
+echo "   cd /opt/evolution-api && docker-compose ps"
+echo ""
+echo "📝 Ver logs:"
+echo "   cd /opt/evolution-api && docker-compose logs -f"
+EOF
+
+# 3. Executar
+chmod +x /tmp/install_evolution.sh
+/tmp/install_evolution.sh
+
+# ============================================================================
+# APÓS A INSTALAÇÃO, TESTAR:
+# ============================================================================
+
+# Verificar se está rodando
+docker ps | grep evolution
+
+# Testar API
+curl http://localhost:8080/
+
+# Ver logs
+cd /opt/evolution-api && docker-compose logs -f evolution-api
+
+# ============================================================================

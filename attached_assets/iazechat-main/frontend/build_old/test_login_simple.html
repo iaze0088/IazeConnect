@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Login - Simples</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #7c3aed;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #6d28d9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .info {
+            background: #e0e7ff;
+            border: 1px solid #6366f1;
+            color: #3730a3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        pre {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste de Login</h1>
+        
+        <div class="info">
+            <strong>📍 Detectado:</strong><br>
+            <strong>Protocolo:</strong> <span id="protocol">-</span><br>
+            <strong>Host:</strong> <span id="host">-</span><br>
+            <strong>Backend URL:</strong> <span id="backend-url">-</span><br>
+            <strong>API URL:</strong> <span id="api-url">-</span>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="admin@admin.com" placeholder="admin@admin.com">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Senha:</label>
+            <input type="password" id="password" value="102030ab" placeholder="102030ab">
+        </div>
+
+        <button onclick="testLogin()">🚀 Testar Login</button>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        // Detectar configuração atual (SEM PORTA - Nginx faz proxy)
+        const protocol = window.location.protocol;
+        const host = window.location.hostname;
+        const port = window.location.port;
+        
+        // Construir URL corretamente
+        const backendURL = port && port !== '80' && port !== '443' 
+            ? `${protocol}//${host}:${port}` 
+            : `${protocol}//${host}`;
+        const apiURL = `${backendURL}/api`;
+
+        // Mostrar na página
+        document.getElementById('protocol').textContent = protocol;
+        document.getElementById('host').textContent = `${host}${port ? ':'+port : ''}`;
+        document.getElementById('backend-url').textContent = backendURL;
+        document.getElementById('api-url').textContent = apiURL;
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+
+            // Limpar resultado anterior
+            resultDiv.style.display = 'none';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '';
+
+            try {
+                console.log('🔄 Enviando request para:', `${apiURL}/auth/admin/login`);
+                console.log('📦 Body:', { email, password });
+
+                const response = await fetch(`${apiURL}/auth/admin/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                console.log('📡 Response status:', response.status);
+                const data = await response.json();
+                console.log('📦 Response data:', data);
+
+                if (response.ok && data.token) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ LOGIN SUCESSO!</strong><br><br>
+                        <strong>Token:</strong><br>
+                        <pre>${data.token}</pre>
+                        <strong>User Type:</strong> ${data.user_type}<br>
+                        <strong>User Data:</strong><br>
+                        <pre>${JSON.stringify(data.user_data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <strong>❌ LOGIN FALHOU</strong><br><br>
+                        <strong>Status:</strong> ${response.status}<br>
+                        <strong>Resposta:</strong><br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <strong>❌ ERRO NA REQUISIÇÃO</strong><br><br>
+                    <strong>Erro:</strong> ${error.message}<br><br>
+                    <strong>Possíveis causas:</strong><br>
+                    • CORS bloqueado<br>
+                    • Backend não está respondendo<br>
+                    • Nginx não está configurado<br>
+                    • Mixed Content (HTTPS → HTTP)<br><br>
+                    <strong>Verifique o Console (F12) para mais detalhes</strong>
+                `;
+            }
+
+            resultDiv.style.display = 'block';
+        }
+
+        // Auto-preencher e testar ao carregar (opcional)
+        console.log('🔧 Configuração detectada:', {
+            protocol,
+            host,
+            backendURL,
+            apiURL
+        });
+    </script>
+</body>
+</html>

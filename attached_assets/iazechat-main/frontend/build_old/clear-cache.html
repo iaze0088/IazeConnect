@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpando Cache...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        h1 {
+            margin: 0 0 20px 0;
+            font-size: 2em;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+        .success {
+            color: #4ade80;
+        }
+        button {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Limpeza de Cache</h1>
+        <div class="spinner"></div>
+        <div class="status" id="status">Limpando dados antigos...</div>
+        <button id="loginBtn" style="display: none;">Ir para Login</button>
+    </div>
+
+    <script>
+        async function clearAllCache() {
+            const status = document.getElementById('status');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            try {
+                // 1. Limpar localStorage
+                status.textContent = '📦 Limpando localStorage...';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                localStorage.clear();
+                
+                // 2. Limpar sessionStorage
+                status.textContent = '📦 Limpando sessionStorage...';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                sessionStorage.clear();
+                
+                // 3. Limpar Service Workers
+                if ('serviceWorker' in navigator) {
+                    status.textContent = '🔄 Removendo Service Workers...';
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                }
+                
+                // 4. Limpar Cache API
+                if ('caches' in window) {
+                    status.textContent = '🗑️ Limpando Cache API...';
+                    const cacheNames = await caches.keys();
+                    for (let cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                    }
+                }
+                
+                // 5. Limpar IndexedDB
+                status.textContent = '💾 Limpando IndexedDB...';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if (window.indexedDB) {
+                    const dbs = await window.indexedDB.databases();
+                    dbs.forEach(db => {
+                        window.indexedDB.deleteDatabase(db.name);
+                    });
+                }
+                
+                // Sucesso!
+                status.textContent = '✅ Cache limpo com sucesso!';
+                status.classList.add('success');
+                
+                // Mostrar botão de login
+                document.querySelector('.spinner').style.display = 'none';
+                loginBtn.style.display = 'inline-block';
+                
+                // Redirecionar automaticamente após 2 segundos
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+                
+            } catch (error) {
+                status.textContent = '❌ Erro ao limpar cache: ' + error.message;
+                console.error('Erro:', error);
+            }
+        }
+        
+        // Iniciar limpeza ao carregar
+        window.addEventListener('load', clearAllCache);
+        
+        // Botão de login
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            window.location.href = '/';
+        });
+    </script>
+</body>
+</html>

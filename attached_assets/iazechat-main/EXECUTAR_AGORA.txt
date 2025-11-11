@@ -1,0 +1,131 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║        🚀 DEPLOY IAZE PARA VPS 151.243.218.223 🚀                ║
+║                  SIGA EXATAMENTE ESTES PASSOS                     ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+
+═══════════════════════════════════════════════════════════════════
+  PASSO 1: COPIAR ARQUIVOS PARA O VPS
+═══════════════════════════════════════════════════════════════════
+
+🔹 Execute estes comandos NO TERMINAL ATUAL (onde o código está):
+
+cd /app
+tar --exclude='node_modules' --exclude='__pycache__' -czf /tmp/iaze-backend.tar.gz backend/
+tar --exclude='node_modules' --exclude='build' -czf /tmp/iaze-frontend.tar.gz frontend/
+
+scp /tmp/iaze-backend.tar.gz root@151.243.218.223:/tmp/
+scp /tmp/iaze-frontend.tar.gz root@151.243.218.223:/tmp/
+scp /app/DEPLOY_COMPLETO_VPS.sh root@151.243.218.223:/root/
+
+Senha quando pedir: 102030ab
+
+
+═══════════════════════════════════════════════════════════════════
+  PASSO 2: CONECTAR NO VPS E EXECUTAR DEPLOY
+═══════════════════════════════════════════════════════════════════
+
+🔹 Conecte no VPS:
+
+ssh root@151.243.218.223
+Senha: 102030ab
+
+
+🔹 Depois de conectado, execute:
+
+chmod +x /root/DEPLOY_COMPLETO_VPS.sh
+bash /root/DEPLOY_COMPLETO_VPS.sh
+
+
+═══════════════════════════════════════════════════════════════════
+  O QUE VAI ACONTECER:
+═══════════════════════════════════════════════════════════════════
+
+✅ Instalar: Node.js, Python, MongoDB, Nginx, Supervisor
+✅ Configurar: Backend na porta 8001
+✅ Buildar: Frontend React
+✅ Configurar: Nginx para servir no IP e domínio
+✅ Iniciar: Todos os serviços automaticamente
+
+
+═══════════════════════════════════════════════════════════════════
+  APÓS O DEPLOY:
+═══════════════════════════════════════════════════════════════════
+
+🌐 Acesse no navegador:
+   http://151.243.218.223/admin/login
+   http://suporte.help/admin/login
+
+🔑 Login Admin:
+   Email: admin@admin.com
+   Senha: 102030@ab
+
+🔑 Atendentes:
+   Login: biancaatt, jessicaatt, andressaatt, leticiaatt
+   Senha: ab181818ab
+
+
+═══════════════════════════════════════════════════════════════════
+  COMANDOS ÚTEIS NO VPS:
+═══════════════════════════════════════════════════════════════════
+
+Ver status:
+  supervisorctl status
+
+Ver logs backend:
+  tail -f /var/log/iaze/backend.err.log
+
+Ver logs nginx:
+  tail -f /var/log/nginx/error.log
+
+Reiniciar backend:
+  supervisorctl restart iaze-backend
+
+Reiniciar nginx:
+  systemctl restart nginx
+
+Testar backend:
+  curl http://localhost:8001/api/health
+
+
+═══════════════════════════════════════════════════════════════════
+  EM CASO DE ERRO:
+═══════════════════════════════════════════════════════════════════
+
+1. Ver logs do backend:
+   tail -100 /var/log/iaze/backend.err.log
+
+2. Verificar se MongoDB está rodando:
+   systemctl status mongod
+
+3. Verificar se Nginx está rodando:
+   systemctl status nginx
+
+4. Testar backend diretamente:
+   curl http://localhost:8001/api/health
+
+5. Se precisar recomeçar, execute novamente:
+   bash /root/DEPLOY_COMPLETO_VPS.sh
+
+
+═══════════════════════════════════════════════════════════════════
+  RESUMO DOS COMANDOS:
+═══════════════════════════════════════════════════════════════════
+
+# 1. No terminal atual:
+cd /app
+tar --exclude='node_modules' --exclude='__pycache__' -czf /tmp/iaze-backend.tar.gz backend/
+tar --exclude='node_modules' --exclude='build' -czf /tmp/iaze-frontend.tar.gz frontend/
+scp /tmp/iaze-backend.tar.gz root@151.243.218.223:/tmp/
+scp /tmp/iaze-frontend.tar.gz root@151.243.218.223:/tmp/
+scp /app/DEPLOY_COMPLETO_VPS.sh root@151.243.218.223:/root/
+
+# 2. No VPS:
+ssh root@151.243.218.223
+chmod +x /root/DEPLOY_COMPLETO_VPS.sh
+bash /root/DEPLOY_COMPLETO_VPS.sh
+
+
+🎉 PRONTO! Sistema funcionando em http://151.243.218.223 🎉
