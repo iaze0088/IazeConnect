@@ -52,7 +52,8 @@ export class WppConnectAPI {
           }
         );
 
-        const token = response.data.full; // "wppconnect:$2b$10$..."
+        // IMPORTANTE: Usar apenas o campo 'token' (bcrypt hash), NÃO o campo 'full'
+        const token = response.data.token; // "$2b$10$..." (apenas o hash)
         
         if (!token) {
           throw new Error("Token não recebido do servidor");
@@ -63,7 +64,7 @@ export class WppConnectAPI {
         session.token = token;
         sessions.set(sessionName, session);
 
-        console.log(`[WPP API] Token gerado para sessão ${sessionName}`);
+        console.log(`[WPP API] Token gerado para sessão ${sessionName}: ${token.substring(0, 15)}...`);
         return token;
       } catch (error: any) {
         const errorMsg = error.response?.data?.message || error.message;
@@ -85,15 +86,14 @@ export class WppConnectAPI {
         session = sessions.get(sessionName);
       }
 
-      console.log(`[WPP API] Iniciando sessão ${sessionName} com token: ${session!.token?.substring(0, 30)}...`);
-      
       const response = await axios.post(
         `${WPP_CONNECT_URL}/api/${sessionName}/start-session`,
         { waitQrCode: true },
         {
           headers: {
+            "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": session!.token // Token já vem com "wppconnect:" prefix
+            "Authorization": `Bearer ${session!.token}` // Bearer + bcrypt hash
           },
           timeout: 15000
         }
@@ -131,6 +131,7 @@ export class WppConnectAPI {
         `${WPP_CONNECT_URL}/api/${sessionName}/qrcode-session`,
         {
           headers: {
+            "Accept": "application/json",
             "Authorization": `Bearer ${session.token}`
           },
           timeout: 10000
@@ -167,6 +168,7 @@ export class WppConnectAPI {
         `${WPP_CONNECT_URL}/api/${sessionName}/check-connection-session`,
         {
           headers: {
+            "Accept": "application/json",
             "Authorization": `Bearer ${session.token}`
           },
           timeout: 10000
@@ -202,6 +204,8 @@ export class WppConnectAPI {
         {},
         {
           headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
             "Authorization": `Bearer ${session.token}`
           },
           timeout: 10000
@@ -233,6 +237,7 @@ export class WppConnectAPI {
         },
         {
           headers: {
+            "Accept": "application/json",
             "Content-Type": "application/json",
             "Authorization": `Bearer ${session.token}`
           },
