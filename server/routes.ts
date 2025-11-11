@@ -118,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Sessão iniciada com servidor WPP Connect externo",
         connectionId: id,
         status: result.status,
-        qrcode: result.qrcode
+        qrCode: result.qrcode
       });
     } catch (error: any) {
       console.error("Erro ao iniciar sessão:", error);

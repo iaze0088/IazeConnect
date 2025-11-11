@@ -109,7 +109,7 @@ export default function WhatsAppPage() {
       if (connection) {
         const updatedConnection = {
           ...connection,
-          qrCode: data.qrcode ? `data:image/png;base64,${data.qrcode}` : undefined
+          qrCode: data.qrCode ? `data:image/png;base64,${data.qrCode}` : undefined
         };
         setSelectedSession(updatedConnection);
         setShowQRModal(true);
