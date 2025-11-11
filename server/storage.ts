@@ -56,12 +56,10 @@ export class MemStorage implements IStorage {
     const connection: WhatsAppConnection = {
       ...insertConnection,
       id,
-      connected: false,
-      qrCode: null,
+      qrCodeData: null,
       phoneNumber: null,
       lastConnectedAt: null,
       createdAt: now,
-      updatedAt: now,
     };
     this.whatsappConnections.set(id, connection);
     return connection;
@@ -74,7 +72,6 @@ export class MemStorage implements IStorage {
     const updated: WhatsAppConnection = {
       ...connection,
       ...data,
-      updatedAt: new Date(),
     };
     this.whatsappConnections.set(id, updated);
     return updated;
@@ -90,6 +87,9 @@ export class MemStorage implements IStorage {
       ...insertLog,
       id,
       timestamp: new Date(),
+      metadata: insertLog.metadata || null,
+      connectionId: insertLog.connectionId || null,
+      level: insertLog.level || "info",
     };
     this.whatsappLogs.set(id, log);
     return log;
@@ -108,6 +108,9 @@ export class MemStorage implements IStorage {
       ...insertMessage,
       id,
       timestamp: new Date(),
+      metadata: insertMessage.metadata || null,
+      messageType: insertMessage.messageType || "text",
+      isIncoming: insertMessage.isIncoming !== undefined ? insertMessage.isIncoming : true,
     };
     this.whatsappMessages.set(id, message);
     return message;
