@@ -21,8 +21,8 @@ async function retryWithBackoff<T>(
 }
 
 // Configuração do servidor WPP Connect externo
-// Usa env vars se disponíveis, senão usa valores fornecidos pelo usuário
-const WPP_CONNECT_URL = process.env.WPPCONNECT_API_URL || "http://46.62.253.32:21465";
+// Usa env vars se disponíveis, senão usa domínio personalizado
+const WPP_CONNECT_URL = process.env.WPPCONNECT_API_URL || "https://wppconnect.suporte.help";
 const WPP_SECRET_KEY = process.env.WPPCONNECT_SECRET_KEY || "THISISMYSECURETOKEN";
 
 console.log(`[WPP API] Configurado para usar servidor: ${WPP_CONNECT_URL}`);
