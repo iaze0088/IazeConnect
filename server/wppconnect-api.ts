@@ -20,17 +20,12 @@ async function retryWithBackoff<T>(
   throw new Error("Retry limit exceeded");
 }
 
-// Configuração do servidor WPP Connect externo (OBRIGATÓRIO via env vars)
-const WPP_CONNECT_URL = process.env.WPPCONNECT_API_URL;
-const WPP_SECRET_KEY = process.env.WPPCONNECT_SECRET_KEY;
+// Configuração do servidor WPP Connect externo
+// Usa env vars se disponíveis, senão usa valores fornecidos pelo usuário
+const WPP_CONNECT_URL = process.env.WPPCONNECT_API_URL || "http://46.62.253.32:21465";
+const WPP_SECRET_KEY = process.env.WPPCONNECT_SECRET_KEY || "THISISMYSECURETOKEN";
 
-// Validação de configuração obrigatória
-if (!WPP_CONNECT_URL) {
-  throw new Error("WPPCONNECT_API_URL não configurado! Defina a variável de ambiente.");
-}
-if (!WPP_SECRET_KEY) {
-  throw new Error("WPPCONNECT_SECRET_KEY não configurado! Defina a variável de ambiente.");
-}
+console.log(`[WPP API] Configurado para usar servidor: ${WPP_CONNECT_URL}`);
 
 interface WppSession {
   sessionName: string;
@@ -90,13 +85,15 @@ export class WppConnectAPI {
         session = sessions.get(sessionName);
       }
 
+      console.log(`[WPP API] Iniciando sessão ${sessionName} com token: ${session!.token?.substring(0, 30)}...`);
+      
       const response = await axios.post(
         `${WPP_CONNECT_URL}/api/${sessionName}/start-session`,
         { waitQrCode: true },
         {
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session!.token}`
+            "Authorization": session!.token // Token já vem com "wppconnect:" prefix
           },
           timeout: 15000
         }

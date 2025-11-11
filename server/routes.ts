@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { whatsappService } from "./services/whatsapp-service";
+import { WppConnectAPI } from "./wppconnect-api";
 import { insertWhatsAppConnectionSchema } from "@shared/schema";
 import { z } from "zod";
 import iazeRoutes from "./routes-iaze";
@@ -58,9 +58,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Conexão não encontrada" });
       }
 
-      if (whatsappService.hasSession(connection.sessionName)) {
-        await whatsappService.closeSession(connection.sessionName);
-      }
+      // Fechar sessão na API WPP Connect
+      await WppConnectAPI.closeSession(connection.sessionName);
 
       await storage.deleteWhatsAppConnection(id);
       
@@ -80,28 +79,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Conexão não encontrada" });
       }
 
-      if (whatsappService.hasSession(connection.sessionName)) {
-        const status = await whatsappService.getSessionStatus(connection.sessionName);
-        return res.json({ 
-          success: true, 
-          message: "Sessão já existe",
-          status 
-        });
-      }
-
       await storage.updateWhatsAppConnection(id, {
         status: "connecting",
       });
 
-      await whatsappService.createSession(connection.sessionName);
+      // Gerar token e iniciar sessão no servidor WPP Connect externo
+      const token = await WppConnectAPI.generateToken(connection.sessionName);
+      const result = await WppConnectAPI.startSession(connection.sessionName);
+
+      // Atualizar status
+      await storage.updateWhatsAppConnection(id, {
+        status: result.status.toLowerCase(),
+      });
+
+      // Log
+      await storage.createWhatsAppLog({
+        connectionId: id,
+        level: "info",
+        message: `Sessão iniciada: ${connection.sessionName} - Status: ${result.status}`,
+      });
+
+      // Se já tiver QR code, enviar via WebSocket
+      if (result.qrcode && wss) {
+        wss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: "qrcode",
+              sessionName: connection.sessionName,
+              qrCode: result.qrcode,
+            }));
+          }
+        });
+      }
 
       res.json({ 
         success: true, 
-        message: "Sessão iniciada, aguarde o QR Code...",
-        connectionId: id 
+        message: "Sessão iniciada com servidor WPP Connect externo",
+        connectionId: id,
+        status: result.status,
+        qrcode: result.qrcode
       });
     } catch (error: any) {
       console.error("Erro ao iniciar sessão:", error);
+      
+      await storage.createWhatsAppLog({
+        connectionId: req.params.id,
+        level: "error",
+        message: `Erro ao iniciar sessão: ${error.message}`,
+      });
+      
       res.status(500).json({ error: error.message });
     }
   });
@@ -115,13 +141,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Conexão não encontrada" });
       }
 
-      if (whatsappService.hasSession(connection.sessionName)) {
-        const status = await whatsappService.getSessionStatus(connection.sessionName);
-        await storage.updateWhatsAppConnection(id, {
-          connected: status.connected,
-          status: status.status,
-        });
-      }
+      // Verificar conexão via API REST
+      const connected = await WppConnectAPI.checkConnection(connection.sessionName);
+      const session = WppConnectAPI.getSession(connection.sessionName);
+      
+      await storage.updateWhatsAppConnection(id, {
+        status: connected ? "connected" : (session?.status || "disconnected"),
+      });
 
       const updated = await storage.getWhatsAppConnection(id);
       res.json(updated);
@@ -145,11 +171,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Conexão não encontrada" });
       }
 
-      if (!whatsappService.hasSession(connection.sessionName)) {
-        return res.status(400).json({ error: "Sessão não está ativa" });
+      // Verificar se sessão existe
+      const session = WppConnectAPI.getSession(connection.sessionName);
+      if (!session) {
+        return res.status(400).json({ error: "Sessão não está ativa. Inicie a sessão primeiro." });
       }
 
-      const result = await whatsappService.sendMessage(connection.sessionName, to, message);
+      // Enviar mensagem via API WPP Connect
+      await WppConnectAPI.sendMessage(connection.sessionName, to, message);
       
       await storage.createWhatsAppLog({
         connectionId: id,
