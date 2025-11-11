@@ -19,7 +19,7 @@ function Router() {
     <Switch>
       <Route path="/" component={ClientLogin} />
       <Route path="/client/chat" component={ClientChat} />
-      <Route path="/admin" component={Dashboard} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/whatsapp" component={WhatsAppPage} />
       <Route path="/sessions" component={SessionsPage} />
       <Route path="/logs" component={LogsPage} />
