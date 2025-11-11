@@ -356,6 +356,9 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   status: text("status").notNull().default("pending"), // pending | success | failed | retrying
   attempts: integer("attempts").notNull().default(0),
   lastError: text("last_error"),
+  errorMessage: text("error_message"),
+  responseStatus: integer("response_status"),
+  responseBody: text("response_body"),
   nextRetryAt: timestamp("next_retry_at"),
   deliveredAt: timestamp("delivered_at"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),

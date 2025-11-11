@@ -8,6 +8,7 @@ import { z } from "zod";
 import iazeRoutes from "./routes-iaze";
 import { ServerMetricsService, type ConnectionStats } from "./services/server-metrics";
 import { ApiKeyService } from "./services/api-key-service";
+import { WebhookService } from "./services/webhook-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register IAZE routes
@@ -112,6 +113,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
           }
         });
+
+        // Trigger webhook para evento QR
+        await WebhookService.notifyWhatsAppEvent(
+          id,
+          connection.sessionName,
+          connection.resellerId || "default",
+          "qr",
+          { qrCode: result.qrcode }
+        );
       }
 
       res.json({ 
