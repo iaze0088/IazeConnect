@@ -50,6 +50,16 @@ The system follows a client-server architecture with a React-based frontend and 
   - Contextual instructions ("Como conectar" card + FAQ link)
   - Countdown auto-resets to 45s on every modal open
 - **Connection Management**: Create, start, delete, and monitor WhatsApp sessions with real-time status updates.
+- **API Key Management System** (NEW - Nov 2025):
+  - **Secure Token Generation**: Format `iaze_live_<40chars>`, SHA-256 hashed storage, bcrypt for API key hashes
+  - **Webhook Delivery Pipeline**: Automated worker with exponential backoff retry (1m, 5m, 15m, 1h), HMAC SHA-256 signatures for security
+  - **Rate Limiting**: Connection limits per API key, enforced at creation time
+  - **Tenant Isolation**: All API key operations protected with JWT auth and resellerId verification
+  - **7 Secure Endpoints**: GET, POST, PATCH, DELETE, rotate, usage - all with authMiddleware
+  - **Event System**: QR code, status, message, connection events trigger webhooks
+  - **UI Integration**: Premium tabs interface in WhatsApp page for key management
+  - **Complete Documentation**: API_KEYS_DOCUMENTATION.md with Node.js/Python examples
+  - **Security**: Webhook secrets never exposed after creation, timing-safe HMAC validation
 - **Logging**: System logs for monitoring events.
 
 ### Coding Standards
