@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppQRModal } from "@/components/whatsapp-qr-modal";
-import { Phone, Plus, Trash2, RefreshCw, QrCode, CheckCircle2, XCircle, Smartphone, Clock, Activity } from "lucide-react";
+import { ApiKeysTab } from "@/components/api-keys-tab";
+import { Phone, Plus, Trash2, RefreshCw, QrCode, CheckCircle2, XCircle, Smartphone, Clock, Activity, Key } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { connectWebSocket } from "@/lib/websocket";
@@ -185,12 +187,26 @@ export default function WhatsAppPage() {
           Gerenciamento WhatsApp
         </h1>
         <p className="text-muted-foreground text-lg">
-          Gerencie conexões WhatsApp via WPP Connect
+          Gerencie conexões WhatsApp via WPP Connect e API Keys
         </p>
       </div>
 
-      {/* Split Layout */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {/* Tabs */}
+      <Tabs defaultValue="connections" className="flex-1 flex flex-col">
+        <TabsList className="w-fit mb-6">
+          <TabsTrigger value="connections" className="gap-2" data-testid="tab-connections">
+            <Phone className="h-4 w-4" />
+            Conexões WhatsApp
+          </TabsTrigger>
+          <TabsTrigger value="api-keys" className="gap-2" data-testid="tab-api-keys">
+            <Key className="h-4 w-4" />
+            API & Webhooks
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="connections" className="flex-1 flex flex-col mt-0">
+          {/* Split Layout */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column: Session Inventory (40%) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Command Bar */}
@@ -401,6 +417,12 @@ export default function WhatsAppPage() {
           onRefresh={handleRefreshQR}
         />
       )}
+        </TabsContent>
+
+        <TabsContent value="api-keys" className="flex-1 mt-0">
+          <ApiKeysTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
