@@ -315,6 +315,56 @@ export const systemBackups = pgTable("system_backups", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
+// ==================== API KEYS & WEBHOOKS ====================
+
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  resellerId: varchar("reseller_id").notNull().references(() => resellers.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // Human-readable label (e.g., "Outro Servidor IAZE")
+  keyHash: text("key_hash").notNull(), // Hashed version of the full API key
+  keyPrefix: text("key_prefix").notNull(), // First 8 chars (iaze_liv) for display
+  keyLastChars: text("key_last_chars").notNull(), // Last 4 chars for display
+  connectionLimit: integer("connection_limit").notNull().default(5), // Max WhatsApp connections allowed
+  webhookUrl: text("webhook_url"), // URL to send webhook events
+  webhookSecret: text("webhook_secret"), // Secret for HMAC signature
+  webhookEvents: text("webhook_events").array().notNull().default(sql`ARRAY['message', 'status', 'qr', 'connection']::text[]`), // Events to send
+  status: text("status").notNull().default("active"), // active | inactive
+  currentConnections: integer("current_connections").notNull().default(0), // Live counter
+  totalRequests: integer("total_requests").notNull().default(0), // Usage stats
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  resellerIdx: index("api_keys_reseller_idx").on(table.resellerId),
+  keyHashIdx: index("api_keys_key_hash_idx").on(table.keyHash),
+}));
+
+export const apiKeyConnections = pgTable("api_key_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKeyId: varchar("api_key_id").notNull().references(() => apiKeys.id, { onDelete: "cascade" }),
+  connectionId: varchar("connection_id").notNull().references(() => waInstances.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  apiKeyIdx: index("api_key_connections_key_idx").on(table.apiKeyId),
+  connectionIdx: index("api_key_connections_conn_idx").on(table.connectionId),
+}));
+
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKeyId: varchar("api_key_id").notNull().references(() => apiKeys.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(), // message | status | qr | connection
+  payload: jsonb("payload").notNull(),
+  status: text("status").notNull().default("pending"), // pending | success | failed | retrying
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  nextRetryAt: timestamp("next_retry_at"),
+  deliveredAt: timestamp("delivered_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  apiKeyIdx: index("webhook_deliveries_key_idx").on(table.apiKeyId),
+  statusIdx: index("webhook_deliveries_status_idx").on(table.status),
+  nextRetryIdx: index("webhook_deliveries_retry_idx").on(table.nextRetryAt),
+}));
+
 // ==================== INSERT SCHEMAS & TYPES ====================
 
 // Admins
@@ -366,6 +416,30 @@ export type QuickReply = typeof quickReplies.$inferSelect;
 export const insertPlanSchema = createInsertSchema(plans).omit({ id: true, createdAt: true });
 export type InsertPlan = z.infer<typeof insertPlanSchema>;
 export type Plan = typeof plans.$inferSelect;
+
+// API Keys
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({ 
+  id: true, 
+  createdAt: true, 
+  lastUsedAt: true,
+  currentConnections: true,
+  totalRequests: true,
+  keyHash: true,
+  keyPrefix: true,
+  keyLastChars: true,
+});
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ApiKey = typeof apiKeys.$inferSelect;
+
+// API Key Connections
+export const insertApiKeyConnectionSchema = createInsertSchema(apiKeyConnections).omit({ id: true, createdAt: true });
+export type InsertApiKeyConnection = z.infer<typeof insertApiKeyConnectionSchema>;
+export type ApiKeyConnection = typeof apiKeyConnections.$inferSelect;
+
+// Webhook Deliveries
+export const insertWebhookDeliverySchema = createInsertSchema(webhookDeliveries).omit({ id: true, createdAt: true, deliveredAt: true });
+export type InsertWebhookDelivery = z.infer<typeof insertWebhookDeliverySchema>;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 
 // ==================== BACKWARD COMPATIBILITY (temporary) ====================
 // Aliases for existing code that uses old WhatsApp naming
