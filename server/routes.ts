@@ -3,10 +3,11 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { WppConnectAPI } from "./wppconnect-api";
-import { insertWhatsAppConnectionSchema } from "@shared/schema";
+import { insertWhatsAppConnectionSchema, insertApiKeySchema } from "@shared/schema";
 import { z } from "zod";
 import iazeRoutes from "./routes-iaze";
 import { ServerMetricsService, type ConnectionStats } from "./services/server-metrics";
+import { ApiKeyService } from "./services/api-key-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register IAZE routes
@@ -224,6 +225,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(metrics);
     } catch (error: any) {
       console.error("Erro ao buscar métricas do servidor:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== API KEYS ====================
+
+  // Listar todas as API keys
+  app.get("/api/api-keys", async (req, res) => {
+    try {
+      const { resellerId } = req.query;
+      const apiKeys = await storage.getAllApiKeys(resellerId as string);
+      
+      // Não retornar keyHash (segurança)
+      const safe = apiKeys.map(({ keyHash, ...rest }) => rest);
+      res.json(safe);
+    } catch (error: any) {
+      console.error("Erro ao listar API keys:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Criar nova API key
+  app.post("/api/api-keys", async (req, res) => {
+    try {
+      const validatedData = insertApiKeySchema.parse(req.body);
+      
+      const { apiKey, fullKey } = await ApiKeyService.createApiKey(validatedData);
+      
+      await storage.createWhatsAppLog({
+        level: "info",
+        message: `API Key criada: ${apiKey.name} (${apiKey.keyPrefix}...${apiKey.keyLastChars})`,
+      });
+
+      // Retornar fullKey APENAS na criação (única vez!)
+      res.json({
+        apiKey: {
+          ...apiKey,
+          keyHash: undefined, // Não expor hash
+        },
+        fullKey, // Mostrar chave completa apenas agora
+        warning: "ATENÇÃO: Guarde esta chave em local seguro! Ela não será mostrada novamente.",
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
+      }
+      console.error("Erro ao criar API key:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Buscar detalhes de uma API key
+  app.get("/api/api-keys/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const apiKey = await storage.getApiKey(id);
+      
+      if (!apiKey) {
+        return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      // Buscar conexões associadas
+      const connections = await storage.getApiKeyConnections(id);
+      const webhookDeliveries = await storage.getWebhookDeliveries(id, 20);
+
+      res.json({
+        ...apiKey,
+        keyHash: undefined, // Não expor hash
+        connections,
+        recentWebhooks: webhookDeliveries,
+      });
+    } catch (error: any) {
+      console.error("Erro ao buscar API key:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Atualizar API key
+  app.patch("/api/api-keys/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, webhookUrl, webhookEvents, connectionLimit, status } = req.body;
+
+      const existing = await storage.getApiKey(id);
+      if (!existing) {
+        return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      // Gerar novo webhook secret se URL mudar
+      let webhookSecret = existing.webhookSecret;
+      if (webhookUrl && webhookUrl !== existing.webhookUrl) {
+        webhookSecret = ApiKeyService.generateWebhookSecret();
+      }
+
+      const updated = await storage.updateApiKey(id, {
+        name,
+        webhookUrl,
+        webhookSecret,
+        webhookEvents,
+        connectionLimit,
+        status,
+      });
+
+      res.json({
+        ...updated,
+        keyHash: undefined,
+      });
+    } catch (error: any) {
+      console.error("Erro ao atualizar API key:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Deletar API key
+  app.delete("/api/api-keys/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const apiKey = await storage.getApiKey(id);
+      if (!apiKey) {
+        return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      const deleted = await storage.deleteApiKey(id);
+      
+      if (deleted) {
+        await storage.createWhatsAppLog({
+          level: "warn",
+          message: `API Key deletada: ${apiKey.name}`,
+        });
+      }
+
+      res.json({ success: deleted });
+    } catch (error: any) {
+      console.error("Erro ao deletar API key:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Rotacionar token de uma API key
+  app.post("/api/api-keys/:id/rotate", async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const result = await ApiKeyService.rotateApiKey(id);
+      if (!result) {
+        return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      await storage.createWhatsAppLog({
+        level: "warn",
+        message: `API Key rotacionada: ${result.apiKey.name}`,
+      });
+
+      res.json({
+        apiKey: {
+          ...result.apiKey,
+          keyHash: undefined,
+        },
+        fullKey: result.fullKey,
+        warning: "ATENÇÃO: A chave anterior foi invalidada! Guarde esta nova chave.",
+      });
+    } catch (error: any) {
+      console.error("Erro ao rotacionar API key:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Buscar estatísticas de uso
+  app.get("/api/api-keys/:id/usage", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const apiKey = await storage.getApiKey(id);
+      if (!apiKey) {
+        return res.status(404).json({ error: "API key não encontrada" });
+      }
+
+      const connections = await storage.getApiKeyConnections(id);
+      const webhooks = await storage.getWebhookDeliveries(id, 100);
+
+      const stats = {
+        totalRequests: apiKey.totalRequests,
+        currentConnections: apiKey.currentConnections,
+        connectionLimit: apiKey.connectionLimit,
+        utilizationPercent: Math.round((apiKey.currentConnections / apiKey.connectionLimit) * 100),
+        lastUsedAt: apiKey.lastUsedAt,
+        webhookStats: {
+          total: webhooks.length,
+          success: webhooks.filter(w => w.status === "success").length,
+          failed: webhooks.filter(w => w.status === "failed").length,
+          pending: webhooks.filter(w => w.status === "pending" || w.status === "retrying").length,
+        },
+        activeConnections: connections,
+      };
+
+      res.json(stats);
+    } catch (error: any) {
+      console.error("Erro ao buscar estatísticas:", error);
       res.status(500).json({ error: error.message });
     }
   });
