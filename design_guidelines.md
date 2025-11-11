@@ -13,11 +13,13 @@
 - Background Secondary: `#1e293b` (slate-800)
 - Surface/Cards: `#1e293b` with subtle gradients
 
-**Accents**:
-- Electric Blue: `#3b82f6` (primary actions, links, active states)
-- Success Green: `#10b981` (connected status, positive metrics)
-- Warning Amber: `#f59e0b` (alerts, connecting states)
-- Error Red: `#ef4444` (disconnected, errors)
+**Accents** (Vibrant & High Contrast):
+- Electric Blue: `#60a5fa` (HSL 217 88% 64%) - primary actions, links, active states
+- Success Green: `#34d399` (HSL 160 90% 46%) - connected status, positive metrics
+- Warning Amber: `#fbbf24` (HSL 38 96% 58%) - alerts, connecting states
+- Error Red: `#f87171` (HSL 0 90% 62%) - disconnected, errors
+
+**Design Note**: Colors increased in saturation and lightness for better visibility and user comprehension. Previous palette was too muted.
 
 **Text Hierarchy**:
 - Primary: `#f1f5f9` (slate-100)

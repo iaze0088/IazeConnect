@@ -6,6 +6,7 @@ import { WppConnectAPI } from "./wppconnect-api";
 import { insertWhatsAppConnectionSchema } from "@shared/schema";
 import { z } from "zod";
 import iazeRoutes from "./routes-iaze";
+import { ServerMetricsService, type ConnectionStats } from "./services/server-metrics";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register IAZE routes
@@ -187,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: { to, messageLength: message.length },
       });
 
-      res.json({ success: true, result });
+      res.json({ success: true });
     } catch (error: any) {
       console.error("Erro ao enviar mensagem:", error);
       res.status(500).json({ error: error.message });
@@ -201,6 +202,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(logs);
     } catch (error: any) {
       console.error("Erro ao buscar logs:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Server metrics endpoint
+  app.get("/api/server/metrics", async (req, res) => {
+    try {
+      // Aggregate connection stats
+      const allConnections = await storage.getAllWhatsAppConnections();
+      const connectionStats: ConnectionStats = {
+        active: allConnections.filter(c => c.status === "connected").length,
+        connecting: allConnections.filter(c => c.status === "connecting").length,
+        disconnected: allConnections.filter(c => c.status === "disconnected").length,
+        error: allConnections.filter(c => c.status === "error").length,
+        total: allConnections.length
+      };
+
+      // Get comprehensive metrics (with 5s cache)
+      const metrics = await ServerMetricsService.getMetrics(connectionStats);
+      res.json(metrics);
+    } catch (error: any) {
+      console.error("Erro ao buscar métricas do servidor:", error);
       res.status(500).json({ error: error.message });
     }
   });
