@@ -13,7 +13,7 @@ router.post("/api/auth/admin/login", async (req, res) => {
     const { password } = req.body;
     
     // Admin com hash adequado (senha: 102030@ab)
-    const adminPasswordHash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIeWVr.2Ru";
+    const adminPasswordHash = "$2b$12$C9d09a9SAMLHD17fECdsEOmEPH.Qu1R2RScUkn.2rmcAwPFZGT2Sy";
     const isValid = await bcrypt.compare(password, adminPasswordHash);
     
     if (!isValid) {
