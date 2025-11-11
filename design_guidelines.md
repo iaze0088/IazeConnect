@@ -1,152 +1,209 @@
-# IAZE WhatsApp Management System - Design Guidelines
+# IAZE WhatsApp Management System - Premium Design Guidelines
 
 ## Design Approach
-**Design System Foundation**: Material Design 3 adapted for enterprise dashboard functionality
-- Rationale: Information-dense WhatsApp connection management requires clear hierarchy, consistent patterns, and robust component library
-- Focus on operational efficiency while maintaining professional polish
+**Premium Dashboard Aesthetic**: Material Design 3 foundation with sophisticated dark theme customization
+- Inspired by Vercel, Linear, and Stripe dashboards
+- Focus: Elegant information density with visual refinement
+- Dark palette with strategic accent colors and glassmorphism effects
+
+## Color System
+
+**Foundation**:
+- Background Primary: `#0f172a` (slate-950)
+- Background Secondary: `#1e293b` (slate-800)
+- Surface/Cards: `#1e293b` with subtle gradients
+
+**Accents**:
+- Electric Blue: `#3b82f6` (primary actions, links, active states)
+- Success Green: `#10b981` (connected status, positive metrics)
+- Warning Amber: `#f59e0b` (alerts, connecting states)
+- Error Red: `#ef4444` (disconnected, errors)
+
+**Text Hierarchy**:
+- Primary: `#f1f5f9` (slate-100)
+- Secondary: `#94a3b8` (slate-400)
+- Tertiary: `#64748b` (slate-500)
+
+**Glassmorphism**:
+- Cards: `backdrop-blur-xl bg-slate-800/40` with `border border-slate-700/50`
+- Overlays: `bg-slate-900/80 backdrop-blur-md`
 
 ## Typography System
 
-**Font Family**: Inter (primary), Roboto Mono (code/logs)
-- **Headers**: Inter Semi-bold
-  - H1: 2rem (32px) - Page titles
-  - H2: 1.5rem (24px) - Section headers  
-  - H3: 1.25rem (20px) - Card/module titles
-- **Body**: Inter Regular
-  - Large: 1rem (16px) - Primary content
-  - Base: 0.875rem (14px) - Secondary content
-  - Small: 0.75rem (12px) - Captions, timestamps
-- **Monospace**: Roboto Mono 0.875rem - API keys, URLs, logs
+**Font Families**: Inter (UI), JetBrains Mono (code/logs)
+
+**Scale**:
+- H1: `text-3xl font-semibold` (30px) - Page titles with gradient text effect
+- H2: `text-2xl font-semibold` (24px) - Section headers
+- H3: `text-lg font-medium` (18px) - Card titles
+- Body Large: `text-base` (16px) - Primary content
+- Body: `text-sm` (14px) - Secondary content
+- Caption: `text-xs` (12px) - Timestamps, metadata
+- Mono: `font-mono text-sm` - API keys, logs, code snippets
+
+**Special Effects**:
+- Page titles: Gradient text `from-blue-400 to-cyan-400`
+- Interactive text: Smooth color transitions on hover
 
 ## Layout System
 
-**Spacing Units**: Tailwind units of 2, 4, 6, 8, 12, 16 (e.g., p-4, gap-8, mb-12)
-- Consistent 8px grid system
-- Section padding: py-8 to py-16
-- Card internal padding: p-6
-- Element spacing: gap-4 between related items, gap-8 between sections
+**Spacing**: Tailwind units of 3, 4, 6, 8, 12, 16, 20, 24 for generous breathing room
+- Section padding: `py-12` to `py-20`
+- Card internal: `p-8`
+- Component gaps: `gap-6` (related), `gap-10` (sections)
 
-**Container Strategy**:
-- Dashboard max-width: max-w-7xl mx-auto px-4
-- Cards/modules: Full width within containers with rounded-lg borders
+**Grid System**:
+- Dashboard containers: `max-w-7xl mx-auto px-6`
+- Metric cards: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6`
+- Connection cards: `grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6`
 
 ## Core Layout Structure
 
-### Navigation Sidebar (Fixed Left)
-- Width: w-64 (256px)
-- Vertical nav with icon + label pattern
-- Sections: Dashboard, WhatsApp, Sessões, Logs, Configurações
-- Active state: Subtle indicator bar on left edge
+### Navigation Sidebar
+- Width: `w-72` (288px) - More spacious than standard
+- Background: `bg-slate-900/50 backdrop-blur-xl border-r border-slate-800`
+- Nav items: `px-4 py-3 rounded-lg` with smooth hover states
+- Active: `bg-blue-500/10 text-blue-400 border-l-2 border-blue-500`
+- Icons: 20px with `text-slate-400` default, `text-blue-400` active
 
-### Main Content Area
-- Left margin: ml-64 (accounts for sidebar)
-- Top app bar: h-16 with breadcrumbs and user menu
-- Content grid: Single column for forms/details, multi-column (grid-cols-2 lg:grid-cols-3) for card layouts
+### Top App Bar
+- Height: `h-16`
+- Background: `bg-slate-900/80 backdrop-blur-lg border-b border-slate-800`
+- Search bar: Glassmorphic with `bg-slate-800/50 backdrop-blur`
+- Profile menu: Avatar with online indicator dot
+
+### Main Content
+- Left margin: `ml-72`
+- Background: Subtle gradient `from-slate-950 to-slate-900`
+- Content padding: `p-8`
 
 ## Component Library
 
-### WhatsApp QR Code Module (Hero Component)
-**Critical Feature - Prominent Placement**
-- Large card with elevation shadow
-- "CONECTAR NÚMERO" button: Prominent size (px-8 py-4), rounded-lg
-- QR Code display area: Centered, min-h-64, with loading skeleton state
-- Connection status indicator: Icon + text (Conectado/Desconectado/Aguardando)
-- Session info below QR: Phone number, connection time
+### Real-Time Metric Cards
+- Layout: 4-column grid on desktop
+- Card style: Glassmorphic `backdrop-blur-xl bg-gradient-to-br from-slate-800/60 to-slate-800/30`
+- Border: `border border-slate-700/50 rounded-2xl`
+- Padding: `p-6`
+- Content: Icon (32px gradient), large number (text-3xl font-bold), label, trend indicator (↑↓ with percentage)
+- Hover: Subtle lift `hover:translate-y-[-2px] transition-transform duration-300`
 
-### Connection Status Cards
-- Grid layout: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6
-- Each card shows: Avatar/icon, connection name, status badge, action menu
-- Quick actions: Reconectar, Desconectar, Ver Logs
+### WhatsApp QR Connection Module
+- Centered card: `max-w-2xl mx-auto`
+- Premium elevation: `shadow-2xl shadow-blue-500/10`
+- Header: Large "CONECTAR NÚMERO" button with gradient `bg-gradient-to-r from-blue-500 to-cyan-500`
+- QR Display: `min-h-80` centered with animated border pulse when connecting
+- Status indicator: Colored dot + text with smooth status transitions
+- Connection info: Glassmorphic panel below QR with phone, duration, device info
 
-### Session Management Table
-- Striped rows for readability
-- Columns: Sessão ID, Número, Status, Última Atividade, Ações
-- Sortable headers
-- Inline action buttons per row
+### Modern Chart Components
+- Line/Area charts: Gradient fills `from-blue-500/20 to-transparent`
+- Grid lines: `stroke-slate-800`
+- Tooltips: Dark glassmorphic cards
+- Legends: Horizontal with colored dots
+- Real-time update: Smooth animation for data points
 
-### Logs Panel
-- Monospace font throughout
-- Toggle filters: Info, Warning, Error, Debug
-- Auto-scroll option with pause button
-- Timestamp prefix on each line
-- Copy log button in header
+### Connection Status Grid
+- Cards: `rounded-xl backdrop-blur-xl bg-slate-800/40`
+- Avatar: 48px circular with online status ring
+- Status badges: Glowing effect with matching accent color
+- Quick actions: Icon buttons with `hover:bg-slate-700/50`
+- Connection strength indicator: Signal bars with color coding
 
-### Configuration Forms
-- Single column layout, max-w-2xl
-- Label above input pattern
-- Input groups with helper text below
-- Section dividers with descriptive headers
-- API configuration: Masked secret key with reveal toggle
+### Session Table (Premium)
+- Header: Sticky with `backdrop-blur-lg bg-slate-900/80`
+- Rows: `hover:bg-slate-800/30 transition-colors`
+- Alternating subtle background for readability
+- Column headers: Sortable with animated chevrons
+- Status cells: Badge with glow effect matching status color
+- Actions: Dropdown menu with glassmorphic overlay
 
-## Component Patterns
+### Logs Terminal
+- Background: `bg-slate-950 rounded-xl border border-slate-800`
+- Font: JetBrains Mono throughout
+- Padding: `p-6`
+- Line height: Generous `leading-relaxed`
+- Syntax highlighting: Info (blue), Warning (amber), Error (red), Success (green)
+- Timestamp: `text-slate-500`
+- Auto-scroll indicator: Floating button with pulse animation
+- Copy button: Top-right with smooth icon transition on click
 
-**Buttons**:
-- Primary: px-6 py-3 rounded-lg font-medium
-- Secondary: px-4 py-2 rounded border
-- Icon buttons: p-2 rounded-lg (for actions in tables/cards)
+### Form Components
+- Inputs: `bg-slate-800/50 border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20`
+- Height: `h-12 rounded-lg px-4`
+- Labels: `text-sm text-slate-300 mb-2`
+- Helper text: `text-xs text-slate-500 mt-1`
+- API key fields: Monospace with reveal toggle, copy button on hover
 
-**Status Badges**:
-- Pill shape: px-3 py-1 rounded-full text-sm
-- Icons: 16px before text
-- States: Conectado, Desconectado, Conectando, Erro
+## Animation System
 
-**Cards**:
-- Border with subtle shadow
-- Rounded corners: rounded-lg
-- Header with title + optional actions
-- Content padding: p-6
-- Hover state: Subtle lift effect
+**Purposeful & Smooth**:
+- Page transitions: Fade-in `duration-400 ease-out`
+- Card hover: `transform scale-[1.01] duration-300`
+- Status changes: Color transition `transition-all duration-500`
+- QR code appearance: Scale + fade `duration-600 ease-out`
+- Real-time data: Smooth chart animations with spring physics
+- Button interactions: Scale down on click `active:scale-95`
+- Loading states: Skeleton pulse with gradient shimmer
 
-**Input Fields**:
-- Height: h-12
-- Border: rounded-md
-- Focus: Ring effect with offset
-- Disabled: Reduced opacity with cursor-not-allowed
+**Micro-interactions**:
+- Copy button: Checkmark animation on success
+- Connection toggle: Smooth slide with color morph
+- Notification badges: Bounce entrance
+- Metric changes: Number count-up animation
 
-## Page-Specific Layouts
+## Special Visual Effects
 
-### Dashboard (Home)
-- Overview cards in 3-column grid: Total Conexões, Ativas, Erros
-- Recent activity list below
-- Quick action buttons
+**Gradients**:
+- Card backgrounds: Subtle `from-slate-800/60 to-slate-800/30`
+- Button primaries: `from-blue-500 to-cyan-500`
+- Text accents: `from-blue-400 to-cyan-400`
+- Glow effects on status indicators
 
-### WhatsApp Connection Page
-- Centered QR code module (max-w-2xl mx-auto)
-- Instructions text above: "Escaneie o QR Code com seu WhatsApp"
-- Connection history sidebar (if space allows, otherwise below)
+**Shadows**:
+- Cards: `shadow-xl shadow-slate-900/50`
+- Elevated: `shadow-2xl shadow-blue-500/5`
+- Glow: `shadow-lg shadow-blue-500/30` for active elements
 
-### Sessions Management
-- Table view with filters at top
-- Bulk actions toolbar when items selected
-- Add new session button (top right)
+**Borders**:
+- Standard: `border-slate-700/50`
+- Active: `border-blue-500/50`
+- Glow border: Add `ring-1 ring-blue-500/20` for emphasis
+
+## Page Layouts
+
+### Dashboard Home
+- Metric row: 4 cards (Total, Active, Errors, Response Time)
+- Activity chart: Full-width area chart showing connections over time
+- Recent sessions: Table with last 10 connections
+- Quick actions: Floating action button group (bottom-right)
+
+### WhatsApp Connection
+- Hero QR module: Centered with generous spacing
+- Instructions: Above QR with icon, step-by-step
+- Connection history: Timeline view in sidebar (if desktop) or below (mobile)
+- Device info panel: Shows WhatsApp version, device type
 
 ### Logs Viewer
-- Full-width layout
-- Filter toolbar: Time range, level, search
-- Auto-refresh toggle
-- Export logs button
+- Full-width terminal aesthetic
+- Filter toolbar: Pills for level selection with count badges
+- Time range selector: Glassmorphic dropdown
+- Search: Highlighted matches with scroll-to navigation
+- Export: Button with format options (JSON, TXT, CSV)
 
-## Animation Guidelines
-**Minimal and Purposeful**:
-- QR code appearance: Fade-in only (duration-300)
-- Status badge changes: Smooth transition (transition-colors)
-- Card hover: Subtle scale or shadow increase
-- NO scroll animations, parallax, or decorative motion
+## Responsive Strategy
+- Mobile (<768px): Sidebar slides over, single-column metrics, collapsible sections
+- Tablet (768-1024px): 2-column metrics, visible sidebar toggle
+- Desktop (>1024px): Full 4-column metrics, persistent sidebar
 
-## Accessibility Standards
-- All interactive elements: min-h-12 (48px touch target)
-- Form labels: Visible and associated
-- Status communicated via icon + text (not color alone)
-- Keyboard navigation: Visible focus rings
-- ARIA labels on icon-only buttons
-
-## Responsive Behavior
-- Mobile (< 768px): Sidebar collapses to hamburger menu, single-column layouts
-- Tablet (768-1024px): 2-column card grids, visible sidebar
-- Desktop (> 1024px): Full 3-column layouts, fixed sidebar
+## Accessibility
+- Touch targets: `min-h-12 min-w-12`
+- Focus rings: `ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900`
+- Status: Icon + text + color (triple encoding)
+- Keyboard nav: Visible focus with enhanced contrast
+- Screen readers: ARIA labels on all interactive elements
 
 ## Images
-This is a functional dashboard application - no decorative imagery required. Only functional images:
-- WhatsApp QR Code: Generated dynamically via API integration
-- User avatars: Small circular (w-10 h-10) with fallback initials
-- Empty state illustrations: Simple SVG icons for "No connections" or "No logs"
+No hero images required. Functional imagery only:
+- QR Code: Dynamic API-generated, centered in glassmorphic card
+- Avatars: 48px circular with gradient borders for online users
+- Empty states: Minimalist SVG icons with soft glow effects
