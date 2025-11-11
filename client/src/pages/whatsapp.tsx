@@ -16,6 +16,7 @@ export default function WhatsAppPage() {
   const [newSessionName, setNewSessionName] = useState("");
   const [selectedSession, setSelectedSession] = useState<WhatsAppConnection | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [pendingStartId, setPendingStartId] = useState<string | null>(null);
 
   const { data: connections = [], isLoading } = useQuery<WhatsAppConnection[]>({
     queryKey: ["/api/whatsapp/connections"],
@@ -45,7 +46,14 @@ export default function WhatsAppPage() {
 
   const createConnection = useMutation({
     mutationFn: async (sessionName: string) => {
-      return await apiRequest("POST", "/api/whatsapp/connections", { sessionName });
+      // Default reseller ID from imported MongoDB backup data
+      const DEFAULT_RESELLER_ID = "6b6b483a-98ac-4613-bd88-5e5c6ba67839";
+      
+      return await apiRequest("POST", "/api/whatsapp/connections", { 
+        sessionName,
+        provider: "wpp-connect",
+        resellerId: DEFAULT_RESELLER_ID
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
@@ -88,11 +96,19 @@ export default function WhatsAppPage() {
     mutationFn: async (id: string) => {
       return await apiRequest("POST", `/api/whatsapp/connections/${id}/start`, undefined);
     },
-    onSuccess: (data, id) => {
+    onMutate: (id) => {
+      setPendingStartId(id);
+    },
+    onSuccess: (data: any, id) => {
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
       const connection = connections.find((c) => c.id === id);
       if (connection) {
-        setSelectedSession(connection);
+        // Update connection with QR code from API response
+        const updatedConnection = {
+          ...connection,
+          qrCode: data.qrcode ? `data:image/png;base64,${data.qrcode}` : undefined
+        };
+        setSelectedSession(updatedConnection);
         setShowQRModal(true);
       }
     },
@@ -102,6 +118,9 @@ export default function WhatsAppPage() {
         description: error.message || "Falha ao iniciar sessão",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setPendingStartId(null);
     },
   });
 
@@ -204,7 +223,7 @@ export default function WhatsAppPage() {
                   <CardTitle className="text-base font-medium">
                     {connection.sessionName}
                   </CardTitle>
-                  {connection.connected ? (
+                  {connection.status === "connected" ? (
                     <Badge className="bg-green-500 hover:bg-green-600" data-testid={`badge-status-${connection.sessionName}`}>
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       Conectado
@@ -225,19 +244,19 @@ export default function WhatsAppPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    {!connection.connected && (
+                    {connection.status !== "connected" && (
                       <Button
                         onClick={() => handleStartSession(connection)}
                         size="sm"
                         className="flex-1"
-                        disabled={startSession.isPending}
+                        disabled={pendingStartId === connection.id && startSession.isPending}
                         data-testid={`button-connect-${connection.sessionName}`}
                       >
                         <QrCode className="h-4 w-4 mr-2" />
                         Conectar Número
                       </Button>
                     )}
-                    {connection.connected && (
+                    {connection.status === "connected" && (
                       <Button
                         onClick={() => refreshStatus.mutate(connection.id)}
                         size="sm"
@@ -272,8 +291,8 @@ export default function WhatsAppPage() {
           open={showQRModal}
           onOpenChange={setShowQRModal}
           sessionName={selectedSession.sessionName}
-          qrCode={selectedSession.qrCode || ""}
-          status={selectedSession.connected ? "connected" : "connecting"}
+          qrCode={(selectedSession as any).qrCode || selectedSession.qrCodeData || ""}
+          status={selectedSession.status === "connected" ? "connected" : "connecting"}
           onRefresh={handleRefreshQR}
         />
       )}

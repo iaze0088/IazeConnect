@@ -102,6 +102,45 @@ Sistema profissional multi-tenant de gerenciamento de atendimento via WhatsApp c
    - ✅ Validação de roles nos endpoints protegidos
    - ✅ Multi-tenant com isolamento por resellerId
 
+### ✅ Task 2: Integração WPP Connect Server Externo (COMPLETA - 11/11/2025)
+
+**1. Serviço WPP Connect API** (`server/wppconnect-api.ts`):
+   - Cliente HTTP (axios) para servidor WPP Connect externo (46.62.253.32:21465)
+   - Geração automática de tokens de autenticação via `/api/:session/:secretkey/generate-token`
+   - **Formato correto**: `Authorization: Bearer {bcrypt_hash}` (apenas `response.data.token`)
+   - Retry logic com backoff exponencial (3 tentativas)
+   - Timeout configurável (15s para start-session, 10s para outros endpoints)
+
+**2. Endpoints Implementados**:
+   - `generateToken()` - Gera token bcrypt para autenticação nas chamadas subsequentes
+   - `startSession()` - Inicia sessão WhatsApp e retorna QR code base64
+   - `getQRCode()` - Polling para buscar QR code atualizado
+   - `checkConnection()` - Verifica se WhatsApp está conectado
+   - `closeSession()` - Encerra sessão WhatsApp
+   - `sendMessage()` - Envia mensagem via WhatsApp
+
+**3. Gerenciamento de Sessões**:
+   - Map em memória para rastrear sessões ativas
+   - Armazenamento de tokens por sessão
+   - Status tracking (qrcode, INITIALIZING, CONNECTED, CLOSED)
+   - Limpeza automática ao fechar sessão
+
+**4. Integração com Rotas IAZE** (`server/routes.ts`):
+   - `POST /api/whatsapp/connections/:id/start` - Usa WPPConnectAPI.startSession()
+   - Retorna QR code base64 original do servidor WPP Connect
+   - Status em tempo real (qrcode, connected, disconnected)
+
+**5. Testes Confirmados**:
+   - ✅ Token gerado corretamente: `$2b$10$...`
+   - ✅ Sessão iniciada: Status "qrcode"
+   - ✅ QR Code base64 retornado: `iVBORw0KGgoAAAA...`
+   - ✅ API respondendo 200 OK
+   - ✅ Logs confirmam funcionamento completo
+
+**6. Variáveis de Ambiente**:
+   - `WPPCONNECT_API_URL=http://46.62.253.32:21465` (servidor WPP Connect do usuário)
+   - `WPPCONNECT_SECRET_KEY=THISISMYSECURETOKEN` (secret key para geração de tokens)
+
 ### ✅ Implementado Completo (MVP WhatsApp)
 
 **Frontend React**:
@@ -240,3 +279,21 @@ const qrCodeDataURL = `data:image/png;base64,${base64Qr}`;
 ```
 
 **Resultado**: QR Code agora é escaneável e o fluxo de conexão funciona corretamente.
+
+### Bug do Token WPP Connect Externo (Resolvido - 11/11/2025)
+**Problema**: Servidor WPP Connect externo (46.62.253.32:21465) retornava erro "Token is not present" ou "Check that the Session and Token are correct".
+
+**Causa**: Código estava usando `response.data.full` (ex: `wppconnect:$2b$10$...`) quando deveria usar apenas `response.data.token` (ex: `$2b$10$...`).
+
+**Solução**: 
+```typescript
+// ❌ Antes (errado)
+const token = response.data.full; // "wppconnect:$2b$10$..."
+headers: { "Authorization": token }
+
+// ✅ Depois (correto)
+const token = response.data.token; // "$2b$10$..." (apenas bcrypt hash)
+headers: { "Authorization": `Bearer ${token}` }
+```
+
+**Resultado**: Integração com servidor WPP Connect externo funcionando 100% ✅
