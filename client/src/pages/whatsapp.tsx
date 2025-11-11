@@ -29,9 +29,15 @@ export default function WhatsAppPage() {
         queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
         
         if (selectedSession && data.sessionName === selectedSession.sessionName) {
+          // Evitar duplicação do prefix data:image
+          let qrCodeUrl = data.qrCode;
+          if (qrCodeUrl && !qrCodeUrl.startsWith('data:image')) {
+            qrCodeUrl = `data:image/png;base64,${qrCodeUrl}`;
+          }
+          
           const updatedSession = {
             ...selectedSession,
-            qrCode: data.qrCode
+            qrCode: qrCodeUrl
           };
           setSelectedSession(updatedSession as any);
           toast({
@@ -107,9 +113,15 @@ export default function WhatsAppPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
       const connection = connections.find((c) => c.id === id);
       if (connection) {
+        // Evitar duplicação do prefix data:image
+        let qrCodeUrl = data.qrCode;
+        if (qrCodeUrl && !qrCodeUrl.startsWith('data:image')) {
+          qrCodeUrl = `data:image/png;base64,${qrCodeUrl}`;
+        }
+        
         const updatedConnection = {
           ...connection,
-          qrCode: data.qrCode ? `data:image/png;base64,${data.qrCode}` : undefined
+          qrCode: qrCodeUrl
         };
         setSelectedSession(updatedConnection);
         setShowQRModal(true);

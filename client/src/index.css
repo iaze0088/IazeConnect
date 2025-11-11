@@ -36,6 +36,10 @@
   --accent-foreground: 0 0% 9%;
   --destructive: 0 90% 62%;
   --destructive-foreground: 0 0% 98%;
+  --success: 160 90% 46%;
+  --success-foreground: 0 0% 98%;
+  --warning: 38 96% 58%;
+  --warning-foreground: 0 0% 9%;
   --input: 0 0% 70%;
   --ring: 217 88% 64%;
   --chart-1: 217 88% 50%;

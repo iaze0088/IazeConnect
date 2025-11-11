@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ThemeProvider } from "@/contexts/ThemeProvider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import Dashboard from "@/pages/dashboard";
 import WhatsAppPage from "@/pages/whatsapp";
 import SessionsPage from "@/pages/sessions";
@@ -37,29 +39,32 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 min-w-0">
-              <header className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">
-                    Sistema IAZE
-                  </span>
-                </div>
-              </header>
-              <main className="flex-1 overflow-auto p-8">
-                <div className="max-w-7xl mx-auto">
-                  <Router />
-                </div>
-              </main>
+      <ThemeProvider>
+        <TooltipProvider>
+          <SidebarProvider style={style as React.CSSProperties}>
+            <div className="flex h-screen w-full">
+              <AppSidebar />
+              <div className="flex flex-col flex-1 min-w-0">
+                <header className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">
+                      Sistema IAZE
+                    </span>
+                    <ThemeToggle />
+                  </div>
+                </header>
+                <main className="flex-1 overflow-auto p-8">
+                  <div className="max-w-7xl mx-auto">
+                    <Router />
+                  </div>
+                </main>
+              </div>
             </div>
-          </div>
-        </SidebarProvider>
-        <Toaster />
-      </TooltipProvider>
+          </SidebarProvider>
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
