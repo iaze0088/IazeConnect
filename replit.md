@@ -14,10 +14,17 @@ The system follows a client-server architecture with a React-based frontend and 
 
 ### Frontend (React + TypeScript)
 - **Framework**: React 19 with Wouter for routing.
-- **UI/UX**: Shadcn/ui + Tailwind CSS, adapted for Material Design 3.
+- **UI/UX**: Shadcn/ui + Tailwind CSS with premium dark glassmorphic theme.
 - **State Management**: TanStack Query v5.
 - **Real-time**: WebSocket for QR Code and status updates.
-- **Design System**: Professional blue palette (#2563EB) with dark mode support, Inter typography (UI), Roboto Mono (code/logs), 8px grid spacing, responsive (mobile-first with tablet/desktop breakpoints).
+- **Design System (Premium)**: 
+  - Dark palette: Slate backgrounds (#0f172a, #1e293b), Electric Blue primary (#3b82f6), Success Green (#10b981), Warning Amber (#f59e0b)
+  - Glassmorphism: backdrop-blur-xl, gradient overlays, animated borders
+  - Typography: Inter (UI), JetBrains Mono (code/logs)
+  - Custom scrollbar with primary accent
+  - Inspired by Vercel/Linear/Stripe dashboards
+  - Split-pane layouts for optimal information density
+  - Generous spacing (space-y-10, gap-6) for breathing room
 
 ### Backend (Node.js + Express)
 - **Runtime**: Node.js 20.
@@ -28,12 +35,21 @@ The system follows a client-server architecture with a React-based frontend and 
 - **Real-time**: WebSocket Server (path: `/ws`) for broadcasting real-time updates (e.g., QR codes, connection status).
 
 ### Core Features
-- **Data Import**: Supports importing data (e.g., from MongoDB backups) into the extended storage system.
+- **Data Import**: Supports importing 12,941 records from MongoDB backups (Resellers, Users, Clients, Agents, Departments, Tickets, Messages).
 - **Authentication System**: Secure JWT-based authentication for Admin, Reseller, Agent, and Client roles, including client registration with WhatsApp and PIN.
 - **Multi-tenancy**: Data isolation by `resellerId` for secure multi-tenant operations.
 - **WPP Connect Integration**: Manages WhatsApp sessions, generates/retrieves QR codes, checks connection status, and sends messages via an external WPP Connect API. Includes robust token management and retry logic.
-- **Real-time QR Code Display**: Frontend displays scannable QR codes with automatic real-time updates and countdown timers.
-- **Connection Management**: Frontend allows creation, starting, deletion, and status monitoring of WhatsApp connections.
+- **Premium Dashboard**: 4 glassmorphic metric cards with gradients, trend indicators, real-time connection status with glow rings for active sessions.
+- **Split-Pane WhatsApp Page**: Left column (session inventory with quick actions), right column (hero workspace with onboarding guide).
+- **Premium QR Code Modal**: 
+  - Glassmorphic backdrop (blur-40px)
+  - Animated pulsing border with gradient glow
+  - SVG countdown ring (color-coded: green >30s, yellow >15s, red <15s)
+  - Success animation (glow + zoom-in checkmark + auto-close 3s)
+  - Live "Aguardando scan..." status indicator
+  - Contextual instructions ("Como conectar" card + FAQ link)
+  - Countdown auto-resets to 45s on every modal open
+- **Connection Management**: Create, start, delete, and monitor WhatsApp sessions with real-time status updates.
 - **Logging**: System logs for monitoring events.
 
 ### Coding Standards
@@ -45,7 +61,7 @@ The system follows a client-server architecture with a React-based frontend and 
 
 ## External Dependencies
 
-- **WPP Connect API**: An external WPP Connect server (e.g., `http://46.62.253.32:21465`) for WhatsApp communication.
+- **WPP Connect API**: External WPP Connect server at `http://wppconnect.suporte.help:21465` (HTTP with explicit port) for WhatsApp communication.
 - **PostgreSQL**: Planned for production database storage (currently uses in-memory `ExtendedMemStorage` for development).
 - **`@wppconnect-team/wppconnect`**: Node.js library for WhatsApp Web interactions.
 - **`axios`**: HTTP client for API requests to the external WPP Connect server.
