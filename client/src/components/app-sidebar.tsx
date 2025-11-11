@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Activity, FileText, Settings, Phone } from "lucide-react";
+import { Home, MessageSquare, Activity, FileText, Settings, Phone, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -8,8 +8,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 const menuItems = [
   {
@@ -41,6 +43,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { logout, userName } = useAuth();
 
   return (
     <Sidebar>
@@ -65,6 +68,23 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t border-border/50 p-4">
+        <div className="space-y-3">
+          {userName && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              Logado como: <span className="font-medium text-foreground">{userName}</span>
+            </div>
+          )}
+          <SidebarMenuButton
+            onClick={logout}
+            className="w-full hover-elevate"
+            data-testid="button-logout"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sair</span>
+          </SidebarMenuButton>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }
